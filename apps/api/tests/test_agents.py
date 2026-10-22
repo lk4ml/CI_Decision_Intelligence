@@ -304,7 +304,7 @@ def test_multi_source_partial_outage(session):
     assert run.status == "ok"
     assert run.items_fetched == 2  # Europe PMC fixture items only
     assert "pubmed" in run.error and "403" in run.error
-    assert "Unreachable: pubmed" in run.summary and "Europe PMC" not in run.summary.split("Unreachable")[1]
+    assert "Unreachable: PubMed" in run.summary and "Europe PMC" not in run.summary.split("Unreachable")[1]
     src = {s.key: s for s in session.execute(select(Source)).scalars()}
     assert src["pubmed"].last_status == "source_unreachable" and "403" in src["pubmed"].last_error
     assert src["europepmc"].last_status == "ok" and src["europepmc"].last_error is None

@@ -120,7 +120,9 @@ async def _literature(asset: Any, failed: dict[str, SourceUnavailable]) -> Fetch
                     failed[key] = e
                     break  # source is down; skip its remaining queries
     if len(failed) == len(calls):
-        raise failed["pubmed"]
+        err = failed["pubmed"]
+        err.failed_sources = dict(failed)  # type: ignore[attr-defined]
+        raise err
     return _dedupe(out)
 
 

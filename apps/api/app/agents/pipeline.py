@@ -324,10 +324,11 @@ async def _run_one(session: Session, agent: Agent, asset: Asset) -> AgentRun:
         session.rollback()  # discard any partial writes; record the outage honestly
         session.add(run)
         run.status = "source_unreachable"
-        run.error = str(e)
+        all_failed = getattr(e, "failed_sources", None) or {e.source_key: e}
+        run.error = "; ".join(str(x) for x in all_failed.values())
         run.items_fetched = run.items_new = run.signals_created = run.blocked = 0
-        _update_sources(session, [e.source_key] if e.source_key in src_keys else src_keys,
-                        "source_unreachable", str(e))
+        for k, x in all_failed.items():
+            _update_sources(session, [k] if k in src_keys else src_keys, "source_unreachable", str(x))
     except KeyError as e:
         run.status = "error"
         run.error = f"agent not runnable: {e}"
