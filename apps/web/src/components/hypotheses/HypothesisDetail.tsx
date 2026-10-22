@@ -1,4 +1,5 @@
 "use client";
+import ExtLink from "../common/ExtLink";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
@@ -82,13 +83,7 @@ export default function HypothesisDetail({ h, slug }: { h: Hypothesis; slug: str
             <div key={(x.signal_id || "") + i}>
               <span className={`d ${x.delta > 0 ? "p" : ""}`}>{x.delta ? signed(x.delta) : "set"}</span>
               <span>
-                {x.source_url ? (
-                  <a href={x.source_url} target="_blank" rel="noreferrer">
-                    {x.title}
-                  </a>
-                ) : (
-                  x.title
-                )}{" "}
+                <ExtLink url={x.source_url}>{x.title}</ExtLink>{" "}
                 <span className="w">
                   {x.source_name ?? ""} {x.retrieved_at ? `· retrieved ${fmtDate(x.retrieved_at)}` : ""}
                 </span>

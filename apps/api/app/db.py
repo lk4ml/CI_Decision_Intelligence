@@ -33,6 +33,8 @@ def make_engine(url: str | None = None) -> Engine:
         def _fk_on(dbapi_conn, _rec):  # pragma: no cover - trivial
             cur = dbapi_conn.cursor()
             cur.execute("PRAGMA foreign_keys=ON")
+            cur.execute("PRAGMA busy_timeout=15000")
+            cur.execute("PRAGMA journal_mode=WAL")  # no-op ("memory") for in-memory DBs
             cur.close()
 
     return eng
@@ -54,6 +56,18 @@ def init_db() -> None:
     from app import models  # noqa: F401  (register tables)
 
     Base.metadata.create_all(bind=engine)
+    if engine.dialect.name == "sqlite":
+        from sqlalchemy import text
+
+        with engine.begin() as conn:
+            for table in APPEND_ONLY_TABLES:
+                for op in ("UPDATE", "DELETE"):
+                    conn.execute(text(
+                        f"CREATE TRIGGER IF NOT EXISTS {table}_no_{op.lower()} BEFORE {op} ON {table} "
+                        f"BEGIN SELECT RAISE(ABORT, '{table} is append-only'); END"))
+
+
+APPEND_ONLY_TABLES = ("audit_events", "confidence_events")
 
 
 def get_session() -> Iterator[Session]:

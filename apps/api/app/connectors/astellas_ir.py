@@ -17,7 +17,7 @@ from urllib.parse import urljoin, urlparse
 
 import httpx
 
-from .http import RawItem, SourceUnavailable, content_hash, get_bytes, get_text, make_client, now_utc
+from .http import RawItem, SourceUnavailable, content_hash, get_response, make_client, now_utc
 
 SOURCE_KEY = "astellas_ir"
 SITE = "https://www.astellas.com"
@@ -29,6 +29,25 @@ IR_URLS = [u.strip() for u in os.environ.get(
 DEFAULT_TERMS = ["ASP3082", "setidegrasib", "ASP2138", "zolbetuximab"]
 MAX_PRESS_PAGES = 12
 MAX_PDFS = 4
+MAX_PDF_PAGES = 200
+MAX_BYTES = 20 * 1024 * 1024
+PDF_CONTENT_TYPES = ("application/pdf", "application/x-pdf", "application/octet-stream")
+
+
+def allowed_host(host: str) -> bool:
+    """Exact allowlist: astellas.com and its subdomains only."""
+    host = (host or "").lower().rstrip(".")
+    return host == "astellas.com" or host.endswith(".astellas.com")
+
+
+def allowed_url(url: str) -> bool:
+    u = urlparse(url)
+    return u.scheme == "https" and allowed_host(u.hostname or "")
+
+
+async def _get(url: str, client) -> "httpx.Response":
+    return await get_response(SOURCE_KEY, url, client=client, allow_host=allowed_host,
+                              max_bytes=MAX_BYTES)
 SNIPPET_CHARS = 400
 PDF_HINTS = ("presentation", "financial", "results", "pipeline", "r&d", "earnings",
              "business", "briefing", "fy20", "q1", "q2", "q3", "q4")
@@ -97,13 +116,13 @@ def _terms_re(terms: list[str]) -> re.Pattern:
 
 def _is_press_link(abs_url: str) -> bool:
     u = urlparse(abs_url)
-    return (u.hostname or "").endswith("astellas.com") and bool(
+    return allowed_url(abs_url) and bool(
         re.search(r"/news/\d+|/news/[a-z0-9-]{6,}|/press-?release", u.path, re.I)
     ) and not u.path.lower().endswith(".pdf")
 
 
 def _is_pdf(abs_url: str) -> bool:
-    return urlparse(abs_url).path.lower().endswith(".pdf")
+    return allowed_url(abs_url) and urlparse(abs_url).path.lower().endswith(".pdf")
 
 
 def _date_in(text: str) -> str | None:
@@ -152,7 +171,9 @@ def pdf_pages(pdf_bytes: bytes) -> list[str]:
     from pypdf import PdfReader
     reader = PdfReader(io.BytesIO(pdf_bytes))
     pages = []
-    for pg in reader.pages:
+    for i, pg in enumerate(reader.pages):
+        if i >= MAX_PDF_PAGES:
+            break
         try:
             pages.append(pg.extract_text() or "")
         except Exception:  # noqa: BLE001 - malformed page, keep going
@@ -192,13 +213,15 @@ async def fetch(terms: list[str] | None = None,
     try:
         items: list[RawItem] = []
         # 1) press releases (listing failure = source unreachable)
-        listing = parse_html(await get_text(SOURCE_KEY, NEWS_URL, client=c))
+        listing_resp = await _get(NEWS_URL, c)
+        listing_url = str(listing_resp.url)
+        listing = parse_html(listing_resp.text)
         seen: set[str] = set()
         press: list[tuple[str, str]] = []
         for href, anchor in listing.links:
             if not href:
                 continue
-            u = urljoin(NEWS_URL, href).split("#")[0]
+            u = urljoin(listing_url, href).split("#")[0]
             if u in seen or not _is_press_link(u):
                 continue
             seen.add(u)
@@ -207,7 +230,8 @@ async def fetch(terms: list[str] | None = None,
         press.sort(key=lambda x: 0 if rx.search(x[1] or "") else 1)
         for u, _a in press[:MAX_PRESS_PAGES]:
             try:
-                it = press_item(u, await get_text(SOURCE_KEY, u, client=c), rx)
+                r = await _get(u, c)
+                it = press_item(str(r.url), r.text, rx)  # final URL after redirects
             except SourceUnavailable:
                 continue  # one broken article does not invalidate the listing
             if it:
@@ -217,7 +241,9 @@ async def fetch(terms: list[str] | None = None,
         ir_errors = []
         for ir_url in IR_URLS:
             try:
-                page = parse_html(await get_text(SOURCE_KEY, ir_url, client=c))
+                pr = await _get(ir_url, c)
+                page = parse_html(pr.text)
+                ir_url = str(pr.url)
             except SourceUnavailable as e:
                 ir_errors.append(e)
                 continue
@@ -240,7 +266,11 @@ async def fetch(terms: list[str] | None = None,
         pdfs.sort(key=_prio)
         for u, anchor in pdfs[:MAX_PDFS]:
             try:
-                it = pdf_item(u, anchor, await get_bytes(SOURCE_KEY, u, client=c), rx)
+                r = await _get(u, c)
+                ctype = (r.headers.get("content-type") or "").split(";")[0].strip().lower()
+                if ctype not in PDF_CONTENT_TYPES or not r.content.startswith(b"%PDF-"):
+                    continue  # not a PDF; never hand arbitrary bytes to the parser
+                it = pdf_item(str(r.url), anchor, r.content, rx)
             except SourceUnavailable:
                 continue
             if it:

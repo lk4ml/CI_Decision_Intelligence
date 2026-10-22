@@ -26,6 +26,10 @@ class NotFound(Exception):
     pass
 
 
+class Invalid(Exception):
+    """Maps to HTTP 422."""
+
+
 def get_asset(session: Session, slug_or_id: str) -> Asset:
     a = session.execute(select(Asset).where(Asset.slug == slug_or_id)).scalar_one_or_none()
     if a is None:
@@ -88,9 +92,9 @@ def applied_signal_ids(session: Session, hypothesis_ids: list[str]) -> list[str]
 
 
 def role_owns_signal(session: Session, signal: Signal, role: Optional[str]) -> bool:
-    if role is None or role in ADMIN_ROLES:
+    if role in ADMIN_ROLES:
         return True
-    if role in READ_ONLY_ROLES:
+    if role is None or role in READ_ONLY_ROLES:
         return False
     for m in signal.moves:
         h = session.get(Hypothesis, m.hypothesis_id)
@@ -100,7 +104,7 @@ def role_owns_signal(session: Session, signal: Signal, role: Optional[str]) -> b
 
 
 def require_writer(role: Optional[str]) -> None:
-    if role in READ_ONLY_ROLES:
+    if role is None or role in READ_ONLY_ROLES:
         raise Forbidden("Reviewer role is read-only")
 
 

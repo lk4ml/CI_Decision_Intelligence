@@ -302,7 +302,7 @@ class AuditEvent(_Common, Base):
     """Append-only, hash-chained."""
 
     __tablename__ = "audit_events"
-    seq: Mapped[int] = mapped_column(Integer, nullable=False, index=True, default=0)
+    seq: Mapped[int] = mapped_column(Integer, nullable=False, unique=True, index=True)
     ts: Mapped[datetime] = mapped_column(DateTime, default=utcnow, nullable=False)
     actor: Mapped[str] = mapped_column(String(200), nullable=False)
     action: Mapped[str] = mapped_column(String(100), nullable=False)

@@ -203,6 +203,7 @@ export interface Signal {
   published_at: string | null;
   review_status: ReviewStatus;
   moves: SignalMove[];
+  so_what_origin?: "rules" | "llm" | string;
 }
 
 export interface LeverOption {
@@ -434,14 +435,15 @@ export interface PositionHistoryEntry {
   } | null;
 }
 
+/** Flat shape from GET /assets/{slug}/unmatched. */
 export interface UnmatchedItem {
   id: string;
   reason: string;
-  title?: string | null;
-  url?: string | null;
-  source_key?: string | null;
-  retrieved_at?: string | null;
-  created_at?: string | null;
+  title: string | null;
+  url: string | null;
+  source_key: string | null;
+  retrieved_at: string | null;
+  created_at: string | null;
 }
 
 export interface Digest {

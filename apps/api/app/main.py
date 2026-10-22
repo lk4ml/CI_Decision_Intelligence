@@ -12,7 +12,7 @@ from fastapi.responses import JSONResponse
 from app import db
 from app.routers import (agents, assets, briefs, events, hypotheses, me, models, patterns, positions, proposals,
                          scenarios, signals, sources)
-from app.services.common import Conflict, Forbidden, NotFound
+from app.services.common import Conflict, Forbidden, Invalid, NotFound
 
 log = logging.getLogger("di")
 API_PREFIX = "/api/v1"
@@ -62,6 +62,10 @@ def create_app() -> FastAPI:
     @app.exception_handler(Conflict)
     async def _409(_: Request, e: Conflict):
         return JSONResponse({"detail": str(e)}, status_code=409)
+
+    @app.exception_handler(Invalid)
+    async def _422(_: Request, e: Invalid):
+        return JSONResponse({"detail": str(e)}, status_code=422)
 
     @app.exception_handler(NotFound)
     async def _404(_: Request, e: NotFound):

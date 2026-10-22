@@ -1,4 +1,5 @@
 "use client";
+import ExtLink from "../common/ExtLink";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -65,13 +66,7 @@ function ProposalCard({ p, slug, current }: { p: Proposal; slug: string; current
               p.signals.map((s) => (
                 <div key={s.id}>
                   <span>
-                    {s.source_url ? (
-                      <a href={s.source_url} target="_blank" rel="noreferrer">
-                        {s.title}
-                      </a>
-                    ) : (
-                      s.title
-                    )}
+                    <ExtLink url={s.source_url}>{s.title}</ExtLink>
                     <small>
                       {agentName(s.agent)} · {s.source_name ?? "source"} · {fmtDate(s.retrieved_at)}
                     </small>

@@ -18,7 +18,47 @@ from sqlalchemy.orm import Session
 from app.models import AuditEvent, utcnow
 
 GENESIS = "0" * 64
-_LOCK = threading.RLock()
+# Plain Lock (not RLock): it may be released from a different thread than the acquirer (agent runs
+# share the request session across threads). Re-entrancy is tracked per session in session.info.
+_LOCK = threading.Lock()
+_HELD = "_audit_lock_held"
+LOCK_TIMEOUT_S = 30
+
+
+def _acquire(session: Session) -> None:
+    if session.info.get(_HELD):
+        return
+    if not _LOCK.acquire(timeout=LOCK_TIMEOUT_S):
+        raise RuntimeError("audit chain lock timeout")
+    session.info[_HELD] = True
+
+
+def _release(session: Session) -> None:
+    if session.info.pop(_HELD, False):
+        try:
+            _LOCK.release()
+        except RuntimeError:
+            pass
+
+
+def _install_hooks() -> None:
+    from sqlalchemy import event as sa_event
+
+    @sa_event.listens_for(Session, "after_transaction_end")
+    def _end(sess, trans):  # pragma: no cover - trivial
+        if trans.parent is None:
+            _release(sess)
+
+    @sa_event.listens_for(Session, "after_commit")
+    def _commit(sess):  # pragma: no cover - trivial
+        _release(sess)
+
+    @sa_event.listens_for(Session, "after_rollback")
+    def _rollback(sess):  # pragma: no cover - trivial
+        _release(sess)
+
+
+_install_hooks()
 
 
 def canonical(obj: Any) -> str:
@@ -73,7 +113,10 @@ def record(
     after: Any = None,
     asset_id: Optional[str] = None,
 ) -> AuditEvent:
-    with _LOCK:
+    # The lock is held from here until this session commits/rolls back, so concurrent in-process
+    # writers cannot read the same head and fork the chain (seq is also UNIQUE as a backstop).
+    _acquire(session)
+    if True:
         last = _last(session)
         prev_hash = last.hash if last else GENESIS
         seq = (last.seq + 1) if last else 1

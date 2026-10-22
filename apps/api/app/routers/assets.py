@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import html
 import re
 from typing import Optional
 
@@ -171,7 +172,7 @@ def digest(slug: str, role: Optional[str] = None, db: Session = Depends(get_sess
         lines.append(f"• Reopened: {p['line']}")
     text = "\n".join(lines)
     return {"role": role, "subject": lines[0][9:], "text": text,
-            "html": "<div>" + "".join(f"<p>{l}</p>" for l in lines[2:] if l) + "</div>"}
+            "html": "<div>" + "".join(f"<p>{html.escape(l)}</p>" for l in lines[2:] if l) + "</div>"}
 
 
 @router.get("/assets/{slug}/levers")
@@ -221,7 +222,7 @@ def unmatched(slug: str, db: Session = Depends(get_session)):
     for u in db.execute(select(UnmatchedItem).where(UnmatchedItem.asset_id == a.id)
                         .order_by(UnmatchedItem.created_at.desc()).limit(200)).scalars():
         fi = db.get(FetchedItem, u.fetched_item_id) if u.fetched_item_id else None
-        out.append({"id": u.id, "reason": u.reason, "created_at": views.iso(u.created_at),
-                    "item": {"id": fi.id, "source_key": fi.source_key, "external_id": fi.external_id, "url": fi.url,
-                             "title": fi.title, "retrieved_at": views.iso(fi.retrieved_at)} if fi else None})
+        out.append({"id": u.id, "reason": u.reason, "title": fi.title if fi else None, "url": fi.url if fi else None,
+                    "source_key": fi.source_key if fi else None,
+                    "retrieved_at": views.iso(fi.retrieved_at) if fi else None, "created_at": views.iso(u.created_at)})
     return out

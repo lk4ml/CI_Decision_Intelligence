@@ -3,7 +3,8 @@ import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { api } from "@/lib/api";
-import { dayLabel, fmtDate, fmtDateTime, signed } from "@/lib/format";
+import { dayLabel, fmtDate, fmtDateTime, safeHref, signed } from "@/lib/format";
+import ExtLink from "../common/ExtLink";
 import { useUi } from "@/lib/store";
 import type { Signal } from "@/lib/types";
 import { CoverageNotice } from "../common/Coverage";
@@ -36,14 +37,19 @@ function SignalCard({ s, slug }: { s: Signal; slug: string }) {
             <span className="dot"></span>
             {s.agent?.name ?? "Unknown agent"}
           </span>
-          <a href={s.source_url} target="_blank" rel="noreferrer">
-            {s.source_name}
-          </a>
+          <ExtLink url={s.source_url}>{s.source_name}</ExtLink>
           <span>retrieved {fmtDateTime(s.retrieved_at)}</span>
           {s.published_at && <span>· published {fmtDate(s.published_at)}</span>}
         </div>
         <div className="t">{s.title}</div>
-        <div className="so">{s.so_what}</div>
+        <div className="so">
+          {s.so_what_origin === "llm" && (
+            <span className="tag w" style={{ marginRight: 6 }} title="So-what drafted by an LLM from the fetched item; numbers and identifiers are checked against the source">
+              AI-drafted
+            </span>
+          )}
+          {s.so_what}
+        </div>
         <div className="mvs">
           <span className="f">Proposed</span>
           {s.moves.length ? (
@@ -142,17 +148,13 @@ function HeldForTriage({ slug }: { slug: string }) {
         <ul>
           {q.data.map((u) => (
             <li key={u.id}>
-              {u.url ? (
-                <a className="a" href={u.url} target="_blank" rel="noreferrer">
-                  {u.title || u.url}
-                </a>
-              ) : (
-                <b>{u.title || "Untitled item"}</b>
-              )}
+              <ExtLink className={safeHref(u.url) ? "a" : undefined} url={u.url}>
+                {u.title || u.url || "Untitled item"}
+              </ExtLink>
               <br />
               <span>{u.reason}</span>{" "}
               <span className="f xs">
-                {u.source_key ?? ""} {u.retrieved_at ? `· retrieved ${fmtDate(u.retrieved_at)}` : ""}
+                {u.source_key ?? ""} {u.retrieved_at ? `· retrieved ${fmtDate(u.retrieved_at)}` : ""} {u.created_at ? `· held ${fmtDate(u.created_at)}` : ""}
               </span>
             </li>
           ))}

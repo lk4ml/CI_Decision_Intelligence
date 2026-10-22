@@ -88,3 +88,16 @@ export function quarterOf(iso?: string | null) {
   if (f === null) return "—";
   return `${Math.floor(f)} Q${Math.floor((f % 1) * 4) + 1}`;
 }
+
+/** Returns the URL only if it is an absolute http(s) URL; anything else (javascript:, data:, relative) is rejected. */
+export function safeHref(url?: string | null): string | undefined {
+  if (!url || typeof url !== "string") return undefined;
+  const u = url.trim();
+  if (!/^https?:\/\//i.test(u)) return undefined;
+  try {
+    const p = new URL(u);
+    return p.protocol === "http:" || p.protocol === "https:" ? p.href : undefined;
+  } catch {
+    return undefined;
+  }
+}

@@ -1,4 +1,5 @@
 "use client";
+import ExtLink from "../common/ExtLink";
 import { useState } from "react";
 import { fmtDate, quarterOf, yearFrac } from "@/lib/format";
 import type { Trial } from "@/lib/types";
@@ -84,9 +85,9 @@ export default function TrialTimeline({ trials }: { trials: Trial[] }) {
           <div>
             <b>Trial</b>
             <span>
-              <a className="a" href={sel.source_url} target="_blank" rel="noreferrer">
+              <ExtLink className="a" url={sel.source_url}>
                 {sel.nct_id}
-              </a>{" "}
+              </ExtLink>{" "}
               · {sel.sponsor || "—"}
             </span>
           </div>

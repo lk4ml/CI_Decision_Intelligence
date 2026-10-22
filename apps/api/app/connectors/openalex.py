@@ -54,8 +54,9 @@ def map_work(w: dict[str, Any]) -> dict[str, Any]:
 
 def to_raw_item(w: dict[str, Any]) -> RawItem:
     d = map_work(w)
-    # Canonical OpenAlex URL (host check, Addendum A #5); DOI kept in data.
-    url = d.get("openalex_id") or d.get("doi") or d.get("landing_page_url")
+    # Always the canonical openalex.org work URL (guardrail host check); DOI and landing
+    # page stay in ``data`` and never become source_url.
+    url = d.get("openalex_id") or ""
     ext = (d.get("openalex_id") or "").rsplit("/", 1)[-1]
     kind = "preprint" if d.get("type") == "preprint" else "paper"
     return RawItem(
@@ -86,4 +87,5 @@ async def search_works(term: str, days: int = 365, per_page: int = 25,
     if mailto:
         params["mailto"] = mailto
     payload = await get_json(SOURCE_KEY, WORKS_URL, params, client)
-    return [to_raw_item(w) for w in payload.get("results", []) or [] if w.get("id")]
+    return [to_raw_item(w) for w in payload.get("results", []) or []
+            if str(w.get("id") or "").startswith("https://openalex.org/W")]

@@ -9,7 +9,7 @@ from fastapi import Header, HTTPException
 from app.db import get_session  # noqa: F401  (re-export)
 from app.models import ROLES
 
-DEFAULT_ROLE = "Asset lead"
+DEFAULT_ROLE = "Reviewer"  # missing X-Role => read-only (safety review #4)
 
 
 @dataclass

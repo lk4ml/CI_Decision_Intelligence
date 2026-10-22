@@ -1,4 +1,5 @@
 "use client";
+import ExtLink from "../common/ExtLink";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
@@ -53,13 +54,9 @@ function KpiStrip({ kpis }: { kpis: Kpi[] }) {
           <div className="r">
             {k.note ? `${k.note} · ` : ""}
             {k.basis === "sourced" ? (
-              k.source_url ? (
-                <a className="a" href={k.source_url} target="_blank" rel="noreferrer">
-                  sourced
-                </a>
-              ) : (
-                "sourced"
-              )
+              <ExtLink className="a" url={k.source_url}>
+                sourced
+              </ExtLink>
             ) : (
               <span className="warn">stand-in assumption</span>
             )}

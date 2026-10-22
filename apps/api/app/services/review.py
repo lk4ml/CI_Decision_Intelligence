@@ -6,6 +6,7 @@ positions re-render, audit + SSE (published after commit).
 """
 from __future__ import annotations
 
+import math
 from typing import Optional
 
 from sqlalchemy import select
@@ -13,7 +14,7 @@ from sqlalchemy.orm import Session
 
 from app.models import Asset, ConfidenceEvent, Hypothesis, Signal
 from app.services import audit, events, patterns, positions
-from app.services.common import (ADMIN_ROLES, Conflict, Forbidden, NotFound, clamp, live_events,
+from app.services.common import (ADMIN_ROLES, Conflict, Forbidden, Invalid, NotFound, clamp, live_events,
                                  recompute_confidence, require_writer, reverted_ids, role_owns_signal)
 
 
@@ -49,11 +50,23 @@ def apply(session: Session, signal_id: str, actor: str, role: Optional[str] = No
         raise Conflict(f"signal is {s.review_status}, not pending")
     overrides = overrides or {}
     asset = session.get(Asset, s.asset_id)
+    move_codes = {session.get(Hypothesis, m.hypothesis_id).code: m for m in s.moves}
+    for code, val in overrides.items():
+        if code not in move_codes:
+            raise Invalid(f"override for {code} but this signal does not move {code}")
+        try:
+            fval = float(val)
+        except (TypeError, ValueError):
+            raise Invalid(f"override for {code} is not a number")
+        if not math.isfinite(fval):
+            raise Invalid(f"override for {code} must be finite")
+        if fval != move_codes[code].delta and not (reason and reason.strip()):
+            raise Invalid("a reason is required when overriding a proposed move")
     touched, moves_out = [], []
     for m in s.moves:
         h = session.get(Hypothesis, m.hypothesis_id)
-        applied = overrides.get(h.code, m.delta)
-        applied = clamp(float(applied), -10, 10)
+        applied = float(overrides.get(h.code, m.delta))
+        applied = clamp(applied, -10, 10)
         ev = ConfidenceEvent(hypothesis_id=h.id, signal_id=s.id, delta_proposed=m.delta, delta_applied=applied,
                              actor=actor, reason=reason if h.code in overrides else (reason or "applied as proposed"))
         session.add(ev)

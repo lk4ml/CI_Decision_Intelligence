@@ -89,22 +89,40 @@ def _endpoints(text: str) -> list[str]:
     return out
 
 
+def biomarker_hints(asset: Any) -> list[str]:
+    bm = (getattr(asset, "biomarker", "") or "").lower()
+    out = []
+    if "g12d" in bm:
+        out += ["g12d"]
+    if "cldn18" in bm or "claudin" in bm:
+        out += ["cldn18.2", "cldn 18.2", "cldn18", "claudin 18.2", "claudin18.2", "claudin-18.2"]
+    if not out and bm:
+        out = [bm.rstrip("+").strip()]
+    return out
+
+
 def trial_role(asset: Any, trial: dict[str, Any], ctx: dict[str, Any]) -> tuple[str, bool]:
-    """Return (role, on_indication)."""
+    """Return (role, on_indication).
+
+    own: an own watch term in title/interventions. competitor/standard: a matching watch term
+    in title/interventions. Otherwise "context". On-indication requires the asset indication
+    in conditions/title, or a basket ("solid tumor") trial that names the asset biomarker.
+    """
     blob = " ".join([trial.get("title") or "", trial.get("official_title") or "",
                      " ".join(" ".join([i.get("name") or ""] + list(i.get("other_names") or []))
                               for i in trial.get("interventions") or [])]).lower()
     conds = " ".join(trial.get("conditions") or []).lower() + " " + \
         (trial.get("title") or "").lower() + " " + (trial.get("official_title") or "").lower()
-    hints = condition_hints(asset)
-    on_ind = any(h in conds for h in hints) or "solid tumo" in conds
-    own_terms = [t.lower() for t in terms(asset, "own")]
-    if any(t in blob for t in own_terms):
+    bm_blob = conds + " " + " ".join(trial.get("keywords") or []).lower()
+    on_ind = any(h in conds for h in condition_hints(asset)) or (
+        "solid tumo" in conds and any(b in bm_blob for b in biomarker_hints(asset)))
+    if any(t.lower() in blob for t in terms(asset, "own")):
         return "own", on_ind
-    hint = ctx.get("role_hint")
-    if hint in ("competitor", "standard"):
-        return hint, on_ind
-    return "competitor", on_ind
+    if any(t.lower() in blob for t in terms(asset, "competitors")):
+        return "competitor", on_ind
+    if any(t.lower() in blob for t in standard_terms(asset)):
+        return "standard", on_ind
+    return "context", on_ind
 
 
 def extract_trial(asset: Any, item: RawItem, ctx: dict[str, Any],

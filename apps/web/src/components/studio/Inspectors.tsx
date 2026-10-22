@@ -1,4 +1,5 @@
 "use client";
+import ExtLink from "../common/ExtLink";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { api } from "@/lib/api";
@@ -157,9 +158,9 @@ export function SourceInspector({ k }: { k: string }) {
       <div className="kv">
         <b>Endpoint</b>
         <span>
-          <a className="a" href={s.base_url} target="_blank" rel="noreferrer">
+          <ExtLink className="a" url={s.base_url}>
             {s.base_url}
-          </a>
+          </ExtLink>
         </span>
       </div>
       <div className="kv">

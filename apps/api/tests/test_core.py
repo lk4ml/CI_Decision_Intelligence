@@ -325,14 +325,57 @@ def test_every_contract_endpoint_200(client, session):
     assert client.get(f"{API}/audit/verify").json()["ok"] is True
 
 
-def test_audit_chain_tamper_detected(client, session):
+def test_audit_and_confidence_events_append_only_and_tamper_detected(client, session):
+    from sqlalchemy import text
+
     from app.services import audit
 
     assert audit.verify(session)["ok"]
     ev = session.execute(select(AuditEvent).order_by(AuditEvent.seq)).scalars().first()
     ev.payload = {"tampered": True}
+    with pytest.raises(IntegrityError):
+        session.commit()
+    session.rollback()
+    with pytest.raises(IntegrityError):
+        session.execute(text("DELETE FROM audit_events"))
+    session.rollback()
+    sid = make_signal(session, "asp3082-pdac", {"H10": 3})
+    client.post(f"{API}/signals/{sid}/apply", json={}, headers=H_OPS)
+    with pytest.raises(IntegrityError):
+        session.execute(text("UPDATE confidence_events SET delta_applied = 9"))
+    session.rollback()
+    # tamper detection still works if someone bypasses the trigger
+    session.execute(text("DROP TRIGGER audit_events_no_update"))
+    session.execute(text("UPDATE audit_events SET payload = :p WHERE seq = 1"), {"p": '{"x": 1}'})
     session.commit()
     assert audit.verify(session)["ok"] is False
+
+
+def test_safety_rules(client, session):
+    slug = "asp3082-pdac"
+    sid = make_signal(session, slug, {"H10": 8, "H7": 2})
+    # missing X-Role => Reviewer => read-only
+    assert client.post(f"{API}/signals/{sid}/apply", json={}).status_code == 403
+    assert client.put(f"{API}/assets/{slug}/levers", json={"levers": {"geo": "west"}}).status_code == 403
+    assert client.get("/api/v1/me").json()["role"] == "Reviewer"
+    # override validation
+    for body in ({"overrides": {"H1": 3}, "reason": "x"},          # code not in moves
+                 {"overrides": {"H10": 3}},                         # changed without reason
+                 {"overrides": {"H10": "nan"}, "reason": "x"},      # non-finite
+                 {"overrides": {"H10": "inf"}, "reason": "x"}):
+        r = client.post(f"{API}/signals/{sid}/apply", json=body, headers=H_ADMIN)
+        assert r.status_code == 422, (body, r.text)
+    r = client.post(f"{API}/signals/{sid}/apply", json={"overrides": {"H10": 25}, "reason": "strong"}, headers=H_ADMIN)
+    assert r.status_code == 200 and hyp(client, slug, "H10")["confidence"] == 60  # clamped to +10
+    # digest html escaped
+    a = session.execute(select(Asset).where(Asset.slug == slug)).scalar_one()
+    sid2 = make_signal(session, slug, {"H7": 1})
+    session.execute(select(Signal).where(Signal.id == sid2)).scalar_one().title = "<script>alert(1)</script>"
+    session.commit()
+    d = client.get(f"{API}/assets/{slug}/digest").json()
+    assert "<script>" not in d["html"] and "&lt;script&gt;" in d["html"] and d["subject"]
+    sg = client.get(f"{API}/assets/{slug}/signals").json()["items"][0]
+    assert sg["so_what_origin"] == "rules"
 
 
 def test_events_bus_publish_from_sync():
