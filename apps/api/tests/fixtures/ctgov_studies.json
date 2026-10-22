@@ -1,0 +1,64 @@
+{
+  "_comment": "SYNTHETIC TEST FIXTURE - hand-written to the ClinicalTrials.gov API v2 /studies response schema. NOT real data; NCT IDs NCT9999xxxx are deliberately fake. Never loaded by the app.",
+  "studies": [
+    {
+      "protocolSection": {
+        "identificationModule": {
+          "nctId": "NCT99990001",
+          "briefTitle": "A Study of Setidegrasib (ASP3082) Versus Chemotherapy in KRAS G12D Pancreatic Ductal Adenocarcinoma",
+          "officialTitle": "A Phase 3, Randomized Study of ASP3082 in Previously Treated KRAS G12D-Mutated Metastatic Pancreatic Ductal Adenocarcinoma"
+        },
+        "statusModule": {
+          "overallStatus": "RECRUITING",
+          "startDateStruct": {"date": "2026-04-20", "type": "ACTUAL"},
+          "primaryCompletionDateStruct": {"date": "2028-12-31", "type": "ESTIMATED"},
+          "completionDateStruct": {"date": "2029-06-30", "type": "ESTIMATED"},
+          "studyFirstPostDateStruct": {"date": "2026-03-10", "type": "ACTUAL"},
+          "lastUpdatePostDateStruct": {"date": "2026-10-01", "type": "ACTUAL"}
+        },
+        "sponsorCollaboratorsModule": {
+          "leadSponsor": {"name": "Astellas Pharma Global Development, Inc.", "class": "INDUSTRY"}
+        },
+        "designModule": {
+          "studyType": "INTERVENTIONAL",
+          "phases": ["PHASE3"],
+          "enrollmentInfo": {"count": 450, "type": "ESTIMATED"}
+        },
+        "conditionsModule": {
+          "conditions": ["Pancreatic Ductal Adenocarcinoma", "KRAS G12D Mutation"],
+          "keywords": ["KRAS G12D", "degrader"]
+        },
+        "armsInterventionsModule": {
+          "interventions": [
+            {"type": "DRUG", "name": "ASP3082", "otherNames": ["setidegrasib"]},
+            {"type": "DRUG", "name": "Gemcitabine"},
+            {"type": "DRUG", "name": "nab-paclitaxel"}
+          ]
+        },
+        "outcomesModule": {
+          "primaryOutcomes": [{"measure": "Overall survival (OS)", "timeFrame": "Up to 36 months"}],
+          "secondaryOutcomes": [{"measure": "Progression-free survival (PFS)", "timeFrame": "Up to 36 months"}]
+        }
+      }
+    },
+    {
+      "protocolSection": {
+        "identificationModule": {
+          "nctId": "NCT99990002",
+          "briefTitle": "Pan-RAS Inhibitor Versus Standard of Care in Previously Treated Metastatic Pancreatic Cancer"
+        },
+        "statusModule": {
+          "overallStatus": "ACTIVE_NOT_RECRUITING",
+          "startDateStruct": {"date": "2024-10"},
+          "primaryCompletionDateStruct": {"date": "2026-12"},
+          "lastUpdatePostDateStruct": {"date": "2026-09-15"}
+        },
+        "sponsorCollaboratorsModule": {"leadSponsor": {"name": "Example Oncology Co."}},
+        "designModule": {"phases": ["PHASE3"], "enrollmentInfo": {"count": 460}},
+        "conditionsModule": {"conditions": ["Pancreatic Cancer"]},
+        "armsInterventionsModule": {"interventions": [{"type": "DRUG", "name": "daraxonrasib"}]},
+        "outcomesModule": {"primaryOutcomes": [{"measure": "Progression-free survival", "timeFrame": "24 months"}]}
+      }
+    }
+  ]
+}

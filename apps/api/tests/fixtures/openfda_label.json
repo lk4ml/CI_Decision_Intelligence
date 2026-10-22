@@ -1,0 +1,8 @@
+{"_comment": "SYNTHETIC TEST FIXTURE - openFDA drug/label.json response shape; fake set_id. Never loaded by the app.",
+ "meta": {"results": {"skip": 0, "limit": 5, "total": 1}},
+ "results": [
+  {"id": "fake-label-0001", "set_id": "00000000-fake-0000-0000-000000000001", "version": "3",
+   "effective_time": "20260901",
+   "indications_and_usage": ["VYLOY is a claudin 18.2-directed cytolytic antibody indicated in combination with chemotherapy for first-line treatment of CLDN18.2-positive gastric or gastroesophageal junction adenocarcinoma."],
+   "openfda": {"brand_name": ["VYLOY"], "generic_name": ["ZOLBETUXIMAB-CLZB"], "manufacturer_name": ["Astellas Pharma US, Inc."], "application_number": ["BLA761365"]}}
+ ]}

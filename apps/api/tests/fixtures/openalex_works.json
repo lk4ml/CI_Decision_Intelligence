@@ -1,0 +1,11 @@
+{"_comment": "SYNTHETIC TEST FIXTURE - OpenAlex /works response shape; fake W IDs. Never loaded by the app.",
+ "meta": {"count": 1, "per_page": 25, "page": 1},
+ "results": [
+  {"id": "https://openalex.org/W9999000001", "doi": "https://doi.org/10.9999/fake.oa1",
+   "display_name": "Claudin 18.2 targeted bispecific T-cell engagers in gastric cancer",
+   "publication_date": "2026-07-14", "type": "article", "cited_by_count": 25,
+   "primary_location": {"landing_page_url": "https://example.org/article", "source": {"display_name": "Gastric Cancer"}},
+   "authorships": [{"author": {"display_name": "Tanaka H"}, "institutions": [{"display_name": "Example University"}]}],
+   "topics": [{"display_name": "Gastric Cancer Treatment"}],
+   "abstract_inverted_index": {"CLDN18.2": [0], "bispecific": [1], "engagers": [2], "show": [3], "activity": [4]}}
+ ]}

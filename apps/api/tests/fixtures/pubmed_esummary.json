@@ -1,0 +1,16 @@
+{"_comment": "SYNTHETIC TEST FIXTURE - NCBI esummary JSON shape; fake PMIDs. Never loaded by the app.",
+ "header": {"type": "esummary", "version": "0.3"},
+ "result": {
+  "uids": ["99000001", "99000002"],
+  "99000001": {"uid": "99000001", "pubdate": "2026 Sep", "epubdate": "2026 Sep 12", "source": "J Clin Oncol",
+    "fulljournalname": "Journal of clinical oncology", "sortpubdate": "2026/09/12 00:00",
+    "title": "Phase 1 study of the KRAS G12D degrader ASP3082 in advanced solid tumors: efficacy in pancreatic cancer.",
+    "authors": [{"name": "Doe J", "authtype": "Author"}, {"name": "Roe A", "authtype": "Author"}],
+    "articleids": [{"idtype": "pubmed", "value": "99000001"}, {"idtype": "doi", "value": "10.9999/fake.0001"}],
+    "pubtype": ["Journal Article", "Clinical Trial, Phase I"]},
+  "99000002": {"uid": "99000002", "pubdate": "2026 Aug", "source": "Cancer Discov",
+    "fulljournalname": "Cancer discovery", "sortpubdate": "2026/08/01 00:00",
+    "title": "Mechanisms of resistance to KRAS G12D inhibition.",
+    "authors": [{"name": "Poe B"}], "articleids": [{"idtype": "pubmed", "value": "99000002"}],
+    "pubtype": ["Journal Article", "Review"]}
+ }}

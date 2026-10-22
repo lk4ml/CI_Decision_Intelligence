@@ -14,10 +14,8 @@ ARTICLE_URL = "https://europepmc.org/article/{src}/{id}"
 
 
 def item_url(r: dict[str, Any]) -> str:
-    if r.get("doi"):
-        return f"https://doi.org/{r['doi']}"
-    if r.get("pmid"):
-        return f"https://pubmed.ncbi.nlm.nih.gov/{r['pmid']}/"
+    """Europe PMC landing page. Kept on europepmc.org so the guardrail's source-host check
+    holds (Addendum A #5); DOI / PMID links are retained in ``data`` for display."""
     return ARTICLE_URL.format(src=r.get("source", "MED"), id=r.get("id"))
 
 
@@ -52,6 +50,8 @@ def map_result(r: dict[str, Any]) -> dict[str, Any]:
         "abstract": r.get("abstractText") or "",
         "pub_types": (r.get("pubTypeList") or {}).get("pubType") or [],
         "cited_by_count": r.get("citedByCount"),
+        "doi_url": f"https://doi.org/{r['doi']}" if r.get("doi") else None,
+        "pubmed_url": f"https://pubmed.ncbi.nlm.nih.gov/{r['pmid']}/" if r.get("pmid") else None,
     }
 
 

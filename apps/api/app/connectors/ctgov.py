@@ -1,6 +1,7 @@
 """ClinicalTrials.gov API v2 connector (https://clinicaltrials.gov/data-api/api)."""
 from __future__ import annotations
 
+import re
 from typing import Any
 
 import httpx
@@ -48,8 +49,17 @@ def phase_rank(phase: str | None) -> int:
     """Highest numeric phase in a label ("Phase 2/3" -> 3)."""
     if not phase:
         return 0
-    digits = [int(ch) for ch in phase if ch.isdigit()]
-    return max(digits) if digits else 0
+    m = re.search(r"phase\s*([1-4]|I{1,3}V?)(?:\s*/\s*([1-4]|I{1,3}V?))?", phase, re.IGNORECASE)
+    if not m:
+        return 0
+    roman = {"I": 1, "II": 2, "III": 3, "IV": 4}
+
+    def _v(x: str | None) -> int:
+        if not x:
+            return 0
+        return int(x) if x.isdigit() else roman.get(x.upper(), 0)
+
+    return max(_v(m.group(1)), _v(m.group(2)))
 
 
 def _status_label(s: str | None) -> str | None:

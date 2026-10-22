@@ -54,7 +54,8 @@ def map_work(w: dict[str, Any]) -> dict[str, Any]:
 
 def to_raw_item(w: dict[str, Any]) -> RawItem:
     d = map_work(w)
-    url = d.get("doi") or d.get("landing_page_url") or d.get("openalex_id")
+    # Canonical OpenAlex URL (host check, Addendum A #5); DOI kept in data.
+    url = d.get("openalex_id") or d.get("doi") or d.get("landing_page_url")
     ext = (d.get("openalex_id") or "").rsplit("/", 1)[-1]
     kind = "preprint" if d.get("type") == "preprint" else "paper"
     return RawItem(

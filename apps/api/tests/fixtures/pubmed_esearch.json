@@ -1,0 +1,3 @@
+{"_comment": "SYNTHETIC TEST FIXTURE - NCBI esearch JSON shape; fake PMIDs. Never loaded by the app.",
+ "header": {"type": "esearch", "version": "0.3"},
+ "esearchresult": {"count": "2", "retmax": "2", "retstart": "0", "idlist": ["99000001", "99000002"]}}

@@ -1,0 +1,16 @@
+{"_comment": "SYNTHETIC TEST FIXTURE - Europe PMC REST /search?format=json&resultType=core shape; fake IDs. Never loaded by the app.",
+ "version": "6.9", "hitCount": 2,
+ "request": {"queryString": "ASP3082", "resultType": "core"},
+ "resultList": {"result": [
+  {"id": "99000003", "source": "MED", "pmid": "99000003", "doi": "10.9999/fake.0003",
+   "title": "Setidegrasib in KRAS G12D-mutant NSCLC: congress update",
+   "authorString": "Lee C, Kim D.", "journalInfo": {"journal": {"title": "Annals of Oncology"}},
+   "pubYear": "2026", "firstPublicationDate": "2026-09-20",
+   "abstractText": "Phase 1 results of ASP3082 in non-small cell lung cancer showed antitumor activity.",
+   "pubTypeList": {"pubType": ["Congress", "abstract"]}, "citedByCount": 0},
+  {"id": "PPR999001", "source": "PPR", "doi": "10.9999/fake.ppr1",
+   "title": "Degrader pharmacology of KRAS G12D", "authorString": "Smith E.",
+   "pubYear": "2026", "firstPublicationDate": "2026-08-02",
+   "abstractText": "Preprint describing degrader kinetics.",
+   "pubTypeList": {"pubType": ["Preprint"]}}
+ ]}}

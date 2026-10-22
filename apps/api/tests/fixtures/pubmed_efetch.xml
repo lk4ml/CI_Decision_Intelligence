@@ -1,0 +1,11 @@
+<?xml version="1.0" ?>
+<!-- SYNTHETIC TEST FIXTURE - NCBI efetch PubmedArticleSet XML shape; fake PMIDs. Never loaded by the app. -->
+<PubmedArticleSet>
+ <PubmedArticle><MedlineCitation><PMID Version="1">99000001</PMID><Article><Abstract>
+  <AbstractText Label="BACKGROUND">ASP3082 is a KRAS G12D-selective degrader.</AbstractText>
+  <AbstractText Label="RESULTS">Among 40 patients with pancreatic cancer, objective response rate was 30% and the drug was well tolerated.</AbstractText>
+ </Abstract></Article></MedlineCitation></PubmedArticle>
+ <PubmedArticle><MedlineCitation><PMID Version="1">99000002</PMID><Article><Abstract>
+  <AbstractText>Resistance to KRAS G12D inhibitors emerges through RAS pathway reactivation.</AbstractText>
+ </Abstract></Article></MedlineCitation></PubmedArticle>
+</PubmedArticleSet>

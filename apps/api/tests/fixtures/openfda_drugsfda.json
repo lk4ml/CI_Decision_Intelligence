@@ -1,0 +1,11 @@
+{"_comment": "SYNTHETIC TEST FIXTURE - openFDA drug/drugsfda.json response shape. Never loaded by the app.",
+ "meta": {"results": {"total": 1}},
+ "results": [
+  {"application_number": "BLA761365", "sponsor_name": "ASTELLAS",
+   "openfda": {"brand_name": ["VYLOY"], "generic_name": ["ZOLBETUXIMAB-CLZB"]},
+   "products": [{"brand_name": "VYLOY", "active_ingredients": [{"name": "ZOLBETUXIMAB-CLZB", "strength": "100MG"}], "marketing_status": "Prescription"}],
+   "submissions": [
+     {"submission_type": "ORIG", "submission_number": "1", "submission_status": "AP", "submission_status_date": "20241018", "submission_class_code": "TYPE 1"},
+     {"submission_type": "SUPPL", "submission_number": "5", "submission_status": "AP", "submission_status_date": "20260815", "submission_class_code": "EFFICACY", "submission_class_code_description": "Efficacy"}
+   ]}
+ ]}
