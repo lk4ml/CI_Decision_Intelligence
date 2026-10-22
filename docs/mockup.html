@@ -1,0 +1,877 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Decision Intelligence by ZS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  color-scheme:light;
+  --bg:#F4F5F8;--surface:#FFFFFF;--bg-2:#EDEEF2;--bg-3:#E3E5EA;--line:#DDDFE5;--line-2:#C9CCD4;
+  --ink:#15171C;--ink-2:#4F535C;--ink-3:#868B96;
+  --acc:#2563EB;--acc-2:#1D4ED8;--acc-soft:#EBF1FF;--acc-line:#C7D7FE;
+  --font:"Inter",-apple-system,"Segoe UI",system-ui,sans-serif;
+  --sh:0 1px 2px rgba(16,24,40,.05),0 1px 3px rgba(16,24,40,.06);
+  --sh-2:0 12px 32px -16px rgba(16,24,40,.18);--topbg:rgba(244,245,248,.9);--imgbg:transparent;--imgblend:multiply;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]){color-scheme:dark;--bg:#17181B;--surface:#1F2024;--bg-2:#26272C;--bg-3:#2E3036;--line:#34353B;--line-2:#45464D;--ink:#EDEDEF;--ink-2:#B1B2B8;--ink-3:#7E7F86;--acc:#6D9BFF;--acc-2:#8DB1FF;--acc-soft:#1E2A45;--acc-line:#2F4474;--sh:none;--sh-2:none;--topbg:rgba(27,28,31,.85);--imgbg:#fff;--imgblend:normal}}
+:root[data-theme=dark]{color-scheme:dark;--bg:#17181B;--surface:#1F2024;--bg-2:#26272C;--bg-3:#2E3036;--line:#34353B;--line-2:#45464D;--ink:#EDEDEF;--ink-2:#B1B2B8;--ink-3:#7E7F86;--acc:#6D9BFF;--acc-2:#8DB1FF;--acc-soft:#1E2A45;--acc-line:#2F4474;--sh:none;--sh-2:none;--topbg:rgba(27,28,31,.85);--imgbg:#fff;--imgblend:normal}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font);font-size:14.5px;line-height:1.5;font-variant-numeric:tabular-nums;-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit;cursor:pointer;background:none;border:0;padding:0}
+:focus-visible{outline:2px solid var(--acc);outline-offset:2px;border-radius:6px}
+h1,h2,h3,h4{margin:0;font-weight:600;letter-spacing:-0.015em}
+h1{font-size:26px;line-height:1.2}h2{font-size:18px}h3{font-size:15px}h4{font-size:12px;color:var(--ink-3);font-weight:500;letter-spacing:.02em;text-transform:uppercase}
+p{margin:0}
+.m{color:var(--ink-2)}.f{color:var(--ink-3)}.s{font-size:13px}.xs{font-size:12px}.a{color:var(--acc)}
+input[type=text],input[type=number],select,textarea{font:inherit;color:var(--ink);background:var(--surface);border:1px solid var(--line-2);border-radius:10px;padding:9px 12px;width:100%}
+textarea{min-height:70px;resize:vertical}
+.btn{border:1px solid var(--line-2);border-radius:999px;padding:8px 14px;font-size:13.5px;background:var(--surface);white-space:nowrap;display:inline-flex;align-items:center;gap:6px}
+.btn:hover{background:var(--bg-2)}
+.btn.p{background:var(--acc);border-color:var(--acc);color:#fff;font-weight:500}.btn.p:hover{background:var(--acc-2)}
+.btn.sm{padding:5px 11px;font-size:12.5px}.btn.lg{padding:12px 22px;font-size:15px}
+.btn.t{border-color:transparent;color:var(--ink-2);padding-left:8px;padding-right:8px}.btn.t:hover{background:none;color:var(--ink)}
+.tag{display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--acc);background:var(--acc-soft);padding:2px 9px;border-radius:999px;font-weight:500}
+.tag.g{color:var(--ink-2);background:var(--bg-3)}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--acc);display:inline-block}
+.pulse{animation:pulse 1.6s infinite}@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--sh)}
+.hr{border:0;border-top:1px solid var(--line);margin:0}
+
+/* ---------- landing ---------- */
+.landing.off{display:none}
+.lbar{display:flex;justify-content:space-between;align-items:center;padding:16px 36px}
+.logos{display:flex;align-items:center;gap:14px}.logos img{height:26px;width:auto;display:block;mix-blend-mode:var(--imgblend);background:var(--imgbg);border-radius:6px}.logos .sep{width:1px;height:18px;background:var(--line-2)}
+.hero{max-width:1040px;margin:0 auto;padding:72px 24px 24px;text-align:center;position:relative}
+.hero::before{content:"";position:absolute;inset:-60px 0 auto;height:460px;background:radial-gradient(ellipse at 50% 0%,var(--acc-soft),transparent 65%);z-index:-1}
+.eyebrow{display:inline-flex;align-items:center;gap:8px;font-size:12.5px;color:var(--acc);background:var(--acc-soft);padding:5px 12px;border-radius:999px;font-weight:500;margin-bottom:24px}
+.hero h1{font-size:50px;line-height:1.08;letter-spacing:-0.03em;max-width:17ch;margin:0 auto 18px}
+.hero h1 em{font-style:normal;color:var(--acc)}
+.hero .sub{font-size:18px;color:var(--ink-2);max-width:58ch;margin:0 auto 32px;line-height:1.55}
+.cta{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+.shot{max-width:1040px;margin:48px auto 0;padding:0 24px}
+.shot .frame{border:1px solid var(--line);border-radius:18px;overflow:hidden;box-shadow:var(--sh-2);background:var(--surface)}
+.shot .fb{display:flex;gap:6px;padding:11px 14px;border-bottom:1px solid var(--line)}.shot .fb i{width:9px;height:9px;border-radius:50%;background:var(--bg-3)}
+.shot .body{display:grid;grid-template-columns:200px 1fr 1fr;gap:0}
+.shot .sb{background:var(--bg-2);border-right:1px solid var(--line);padding:18px 16px;font-size:12.5px;color:var(--ink-2)}
+.shot .sb div{padding:6px 8px;border-radius:8px}.shot .sb div.on{background:var(--bg-3);color:var(--ink);font-weight:500}
+.shot .col{padding:22px 24px}.shot .col h4{margin-bottom:10px}
+.shot .ln{display:grid;grid-template-columns:1fr 50px;gap:10px;padding:9px 0;border-bottom:1px solid var(--line);font-size:13px}
+.shot .ln .b{height:4px;background:var(--bg-3);border-radius:2px;overflow:hidden;margin-top:6px}.shot .ln .b i{display:block;height:100%;background:var(--acc)}
+.shot .ln b{text-align:right;color:var(--acc)}
+.shot .sg{padding:9px 0;border-bottom:1px solid var(--line);font-size:13px}.shot .sg span{display:block;font-size:12px;color:var(--ink-3)}
+.pillars{max-width:1040px;margin:80px auto 0;padding:0 24px;display:grid;grid-template-columns:repeat(4,1fr);gap:28px}
+.pillars h3{margin-bottom:8px;display:flex;align-items:center;gap:10px}.pillars h3 i{width:28px;height:28px;border-radius:8px;background:var(--acc-soft);color:var(--acc);display:grid;place-items:center;font-style:normal;font-size:13px;font-weight:600}
+.pillars p{color:var(--ink-2);font-size:14px}
+.streams{max-width:1040px;margin:80px auto 0;padding:0 24px}
+.streams .g{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-top:16px}
+.streams .st{border:1px solid var(--line);border-radius:12px;padding:14px;font-size:12.5px;color:var(--ink-2)}.streams .st b{display:block;color:var(--ink);font-weight:500;font-size:13.5px;margin-bottom:4px}
+.streams .st.live{border-color:var(--acc-line);background:var(--acc-soft)}.streams .st span{display:block;margin-top:8px;font-size:11.5px;color:var(--acc)}
+.lfoot{max-width:1040px;margin:80px auto 0;padding:24px;border-top:1px solid var(--line);display:flex;justify-content:space-between;color:var(--ink-3);font-size:13px}
+
+/* ---------- app shell ---------- */
+.app{display:none}.app.on{display:grid;grid-template-columns:256px 1fr;min-height:100vh}
+.side{background:var(--bg-2);border-right:1px solid var(--line);padding:20px 16px;position:sticky;top:0;height:100vh;display:flex;flex-direction:column;gap:24px;overflow:auto}
+.mark{display:flex;align-items:center;gap:10px;padding:0 6px}
+.mark b{font-size:17px;letter-spacing:-0.01em;display:block;line-height:1.1}.mark small{display:block;font-size:12.5px;color:var(--ink-3);font-weight:500;margin-top:3px}.mark small em{font-style:normal;color:#E8701A;font-weight:800;font-size:16px;letter-spacing:.01em}.mark .zsimg{height:30px;width:auto;display:block;mix-blend-mode:multiply}
+.side h4{margin:0 6px 8px}
+.nv{display:flex;flex-direction:column;gap:3px}
+.nv button{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:10px;font-size:14px;color:var(--ink-2);text-align:left;width:100%}
+.nv button:hover{background:var(--bg-3)}.nv button.on{background:var(--bg);color:var(--ink);font-weight:500;box-shadow:var(--sh)}
+.nv button i{width:13px;height:13px;border:1.5px solid currentColor;border-radius:3px;display:inline-block;transform:rotate(45deg);flex:none}.nv button i.o{border-radius:50%;transform:none}
+.nv button .n{margin-left:auto;font-size:12px;color:var(--ink-3)}
+.asset{background:var(--bg);border-left:3px solid var(--acc);border-radius:0 10px 10px 0;padding:10px 12px;margin-bottom:8px;cursor:pointer;box-shadow:var(--sh)}
+.asset.off{border-left-color:var(--line-2);box-shadow:none;opacity:.75}
+.asset b{display:block}.asset span{font-size:12.5px;color:var(--ink-2)}
+.onb{border:1px solid var(--acc-line);border-radius:10px;padding:10px 12px;font-size:13.5px;color:var(--acc);font-weight:700;width:100%;text-align:left;background:var(--surface)}.onb:hover{background:var(--bg)}
+.who{display:flex;flex-direction:column;gap:8px}
+.who div{display:flex;align-items:center;gap:10px;font-size:12.5px;color:var(--ink-2)}
+.av{width:26px;height:26px;border-radius:50%;background:var(--acc-soft);color:var(--acc);display:grid;place-items:center;font-size:11px;font-weight:600;flex:none}
+.who b{color:var(--ink);font-weight:500;display:block}.who span{display:block;font-size:11.5px;color:var(--ink-3)}
+.side .ft{margin-top:auto;font-size:11.5px;color:var(--ink-3);padding:0 6px}
+
+.main{min-width:0}
+.top{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px 28px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--bg);z-index:5}
+.roles{display:flex;gap:3px;padding:3px;background:var(--bg-2);border-radius:12px}
+.roles button{padding:6px 13px;border-radius:9px;font-size:13px;color:var(--ink-2);white-space:nowrap}.roles button.on{background:var(--bg);color:var(--acc);font-weight:500;box-shadow:var(--sh)}
+.top .r{display:flex;align-items:center;gap:12px;font-size:13px;color:var(--ink-3)}
+.wrap{max-width:900px;margin:0 auto;padding:30px 28px 96px}
+.tabs{display:flex;gap:24px;border-bottom:1px solid var(--line);margin-bottom:28px;overflow-x:auto}
+.tabs button{padding:0 0 12px;color:var(--ink-3);font-size:14.5px;border-bottom:2px solid transparent;margin-bottom:-1px;white-space:nowrap}
+.tabs button.on{color:var(--acc);border-bottom-color:var(--acc);font-weight:500}.tabs button b{font-weight:500;color:var(--ink-3);margin-left:6px;font-size:12.5px}
+.view{display:none}.view.on{display:block}
+.sect{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:16px}
+.sect p{color:var(--ink-2);max-width:62ch;margin-top:4px;font-size:14px}
+.how{margin:0 0 22px;border:1px solid var(--acc-line);background:var(--acc-soft);border-radius:12px;overflow:hidden}
+.how summary{list-style:none;cursor:pointer;padding:10px 14px;font-size:13px;color:var(--acc);font-weight:500;display:flex;justify-content:space-between}
+.how summary::-webkit-details-marker{display:none}.how summary::after{content:"How this works";font-weight:400;color:var(--ink-2)}
+.how[open] summary::after{content:"Hide"}
+.how .b{padding:0 14px 14px;display:grid;grid-template-columns:repeat(3,1fr);gap:16px;font-size:13px;color:var(--ink-2)}
+.how .b b{display:block;color:var(--ink);font-weight:600;margin-bottom:3px}
+
+/* what changed */
+.todo .it{display:grid;grid-template-columns:1fr auto;gap:16px;align-items:center;padding:16px 0;border-bottom:1px solid var(--line)}
+.todo .t{font-weight:500}.todo .d{color:var(--ink-2);font-size:13.5px;margin-top:2px}
+.todo .n{font-size:22px;font-weight:600;min-width:34px}.todo .n.a{color:var(--acc)}
+.todo .rt{display:flex;gap:14px;align-items:center}
+
+/* hypotheses */
+.grp{margin-bottom:26px}.grp h4{margin-bottom:4px}
+.h{padding:14px 0;border-bottom:1px solid var(--line)}.h.dim{opacity:.5}
+.h .tp{display:grid;grid-template-columns:1fr 150px 90px;gap:16px;align-items:center;cursor:pointer}
+.h .tp:hover .st{color:var(--acc)}
+.h .st{font-weight:500}.h .st span{color:var(--acc);font-weight:600;margin-right:8px;font-size:12px}
+.h .meta{display:flex;gap:8px;color:var(--ink-3);font-size:12.5px;margin-top:6px;flex-wrap:wrap;align-items:center}
+.h .meta .ag{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;color:var(--ink-2);background:var(--bg-2);padding:1px 8px;border-radius:999px}
+.h .meta .ag i{width:6px;height:6px;border-radius:50%;background:var(--acc);display:inline-block}
+.cf{display:grid;grid-template-columns:1fr 36px;gap:10px;align-items:center}.cf .b{height:4px;background:var(--bg-3);border-radius:2px;overflow:hidden}.cf .b i{display:block;height:100%;background:var(--acc)}.cf b{text-align:right}
+.mv{font-size:13px;text-align:right}.mv.up{color:var(--acc)}.mv.z{color:var(--ink-3)}
+.chev{width:28px;height:28px;border-radius:7px;color:var(--ink-3);display:grid;place-items:center}.chev:hover{background:var(--bg-2);color:var(--ink)}
+.det{display:none;grid-template-columns:1fr 1fr;gap:28px;padding:14px 0 4px;font-size:13.5px}.det.on{display:grid}
+.det h4{margin:0 0 8px}
+.trail div{display:grid;grid-template-columns:40px 1fr;gap:8px;padding:5px 0;border-bottom:1px solid var(--line)}.trail div:last-child{border:0}
+.trail .d{font-weight:600}.trail .d.p{color:var(--acc)}.trail .w{color:var(--ink-3);font-size:12px}
+.thr{display:flex;gap:10px;align-items:center;margin-bottom:14px}.thr input{width:64px;text-align:center}
+.reg{margin-top:28px}
+.reg .fm{display:grid;grid-template-columns:1fr 1fr;gap:10px 14px;margin-top:14px}
+.reg .fm .full{grid-column:1/-1}
+.reg label{display:block;font-size:12px;color:var(--ink-2);margin-bottom:5px;font-weight:500}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{border:1px solid var(--line-2);border-radius:999px;padding:5px 11px;font-size:12.5px;color:var(--ink-2);display:inline-flex;align-items:center;gap:6px}
+.chip:hover{background:var(--bg-2)}.chip.on{border-color:var(--acc);color:var(--acc);background:var(--acc-soft)}
+.chip small{color:var(--ink-3);font-size:11px}
+.reg .ft{display:flex;justify-content:space-between;align-items:center;margin-top:14px;gap:12px}
+.draft{grid-column:1/-1;border:1px dashed var(--line-2);border-radius:12px;padding:12px 14px;display:none}
+.draft.on{display:block}
+.draft .g{display:grid;grid-template-columns:1fr 160px 160px;gap:8px;margin-top:8px}
+
+/* signals */
+.dayh{margin:24px 0 4px;font-weight:500;color:var(--ink-2);font-size:13.5px}
+.sg{padding:16px 0;border-bottom:1px solid var(--line);display:grid;grid-template-columns:1fr auto;gap:8px 20px}
+.sg.done .t,.sg.done .so{color:var(--ink-3)}
+.sg .src{font-size:12.5px;color:var(--ink-3);margin-bottom:3px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.sg .t{font-weight:500}.sg .so{color:var(--ink-2);font-size:13.5px;margin-top:4px}
+.sg .mvs{display:flex;gap:10px;flex-wrap:wrap;font-size:13px;margin-top:8px;align-items:center}.sg .mvs .d{font-weight:600}.sg .mvs .d.p{color:var(--acc)}
+.sg .acts{display:flex;gap:6px}
+.mail{border:1px solid var(--line);border-radius:14px;overflow:hidden;margin-bottom:6px}
+.mail summary{padding:12px 16px;cursor:pointer;list-style:none;display:flex;justify-content:space-between;color:var(--ink-2);font-size:13.5px}.mail summary::-webkit-details-marker{display:none}
+.mail .eb{padding:4px 18px 18px;border-top:1px solid var(--line);font-size:14px}.mail .subj{font-weight:600;margin:12px 0 10px}.mail ul{margin:6px 0 12px 18px;padding:0}.mail li{margin-bottom:6px}.mail li span{color:var(--ink-2)}
+
+/* workbench */
+.di{padding:22px 0;border-bottom:1px solid var(--line)}
+.di .dh{display:grid;grid-template-columns:1fr auto;gap:16px;align-items:start}
+.di .ln{font-size:12px;color:var(--acc);font-weight:500;margin-bottom:4px}.di h3{font-size:16px}
+.di .ev{font-size:12.5px;color:var(--ink-3);margin-top:4px}
+.di .stat{text-align:right;font-size:12.5px;color:var(--ink-2);white-space:nowrap}.di .stat b{display:block;font-size:20px;color:var(--acc)}
+.di .q{margin-top:12px;font-size:14.5px}.di .q b{font-weight:600}
+.di .trg{margin-top:10px;font-size:13px;color:var(--ink-2);padding:9px 12px;background:var(--surface);border:1px solid var(--line);border-radius:10px}.di .trg b{color:var(--ink);font-weight:500}
+.di .chain{margin-top:14px;display:grid;grid-template-columns:1fr 1fr;gap:24px}.di h4{margin:0 0 6px}
+.evl div{display:grid;grid-template-columns:1fr auto;gap:10px;padding:6px 0;border-bottom:1px solid var(--line);font-size:13px}.evl .mm{color:var(--acc);font-weight:600;white-space:nowrap}.evl small{display:block;color:var(--ink-3);font-size:12px}
+.agl div{padding:5px 0;border-bottom:1px solid var(--line);display:grid;grid-template-columns:160px 1fr;gap:10px;font-size:13px;color:var(--ink-2)}.agl b{color:var(--acc);font-weight:500}
+.opts{margin-top:14px}
+table{width:100%;border-collapse:collapse;font-size:13px}th{text-align:left;font-weight:500;color:var(--ink-3);font-size:12px;padding:6px 0;border-bottom:1px solid var(--line)}td{padding:8px 0;border-bottom:1px solid var(--line)}td.n,th.n{text-align:right}
+.opts td.o{font-weight:500}.opts tr.cur td{background:var(--acc-soft)}
+.di .acts{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+.di.quiet{padding:12px 0}.di.quiet h3{font-size:14px;font-weight:500;color:var(--ink-2)}
+.near{margin-top:22px}.near div{display:grid;grid-template-columns:1fr auto;gap:12px;padding:8px 0;border-bottom:1px solid var(--line);font-size:13px;color:var(--ink-2)}.near b{color:var(--ink);font-weight:500}
+
+/* simulate */
+.levers{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px}
+.lv{display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:999px;padding:4px 6px 4px 12px;font-size:13px;color:var(--ink-2);background:var(--surface)}
+.lv select{border:0;padding:4px 22px 4px 4px;width:auto;background:transparent;font-weight:500;color:var(--ink);font-size:13px;appearance:auto;border-radius:0}
+.lv.tg{padding-right:12px}.lv.tg .dot{background:var(--line-2)}.lv.tg.on{color:var(--acc);border-color:var(--acc)}.lv.tg.on .dot{background:var(--acc)}
+.mtabs{display:flex;gap:4px;margin-bottom:22px;flex-wrap:wrap}.mtabs button{padding:6px 12px;border-radius:999px;font-size:13px;color:var(--ink-2);border:1px solid transparent}.mtabs button.on{border-color:var(--acc);color:var(--acc);background:var(--acc-soft);font-weight:500}
+.model{display:none}.model.on{display:block}
+.k{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid var(--line);border-radius:14px;background:var(--surface);padding:16px 14px;margin-bottom:22px}
+.k div{padding:0 14px;border-left:1px solid var(--line)}.k div:first-child{border-left:0;padding-left:0}
+.k .l{font-size:12.5px;color:var(--ink-2)}.k .v{font-size:24px;font-weight:600;line-height:1.15;margin:2px 0}.k .v.a{color:var(--acc)}.k .r{font-size:12px;color:var(--ink-3)}
+.fun .fr{display:grid;grid-template-columns:230px 1fr 80px;gap:14px;align-items:center;padding:7px 0;font-size:13.5px}.fun .b{height:14px;background:var(--bg-3);border-radius:3px;overflow:hidden}.fun .b i{display:block;height:100%;background:var(--ink)}.fun .fr:last-child .b i{background:var(--acc)}.fun .n{text-align:right;font-weight:500}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:32px}
+.comp div{display:grid;grid-template-columns:1fr 54px;gap:10px;padding:8px 0;border-bottom:1px solid var(--line);font-size:13.5px}.comp .v{text-align:right;font-weight:600}.comp .v.p{color:var(--acc)}.comp .tot{border:0;font-weight:600}
+.mk{display:grid;grid-template-columns:repeat(3,1fr);gap:24px}.mk h3{margin-bottom:8px}.mk .kv{display:flex;justify-content:space-between;gap:10px;padding:6px 0;border-bottom:1px solid var(--line);font-size:13.5px}.mk .kv b{font-weight:500;text-align:right}
+.read{margin-top:22px;padding:14px 16px;background:var(--surface);border:1px solid var(--line);border-radius:14px;font-size:13.5px;color:var(--ink-2)}.read b{color:var(--ink);font-weight:600}
+.hist{display:flex;align-items:flex-end;gap:2px;height:110px;border-bottom:1px solid var(--line-2);margin-top:12px}.hist i{flex:1;background:var(--bg-3);display:block}.hist i.mid{background:var(--ink)}.hist i.med{background:var(--acc)}
+.axis{display:flex;justify-content:space-between;color:var(--ink-3);font-size:12px;margin-top:6px}
+.models{margin-top:34px;border-top:1px solid var(--line);padding-top:22px}
+.models .row{display:grid;grid-template-columns:170px 1fr 1fr 110px;gap:14px;padding:10px 0;border-bottom:1px solid var(--line);font-size:13px;color:var(--ink-2)}
+.models .row b{color:var(--ink);font-weight:500}.models .row .st{text-align:right}
+
+/* positions */
+.pos .p{display:grid;grid-template-columns:150px 1fr 150px;gap:20px;padding:18px 0;border-bottom:1px solid var(--line);align-items:start}
+.pos .lab{font-weight:600}.pos .lab span{display:block;color:var(--ink-3);font-size:12px;font-weight:400;margin-top:2px}
+.pos .why{color:var(--ink-2);font-size:13.5px;margin-top:6px}
+.pos .owns{margin-top:8px;font-size:12.5px;color:var(--ink-3)}.pos .owns b{color:var(--ink-2);font-weight:500}
+.pos .side2{display:flex;flex-direction:column;align-items:flex-end;gap:8px;text-align:right}
+.pos .c{font-size:20px;font-weight:600;color:var(--acc)}.pos .c span{display:block;font-size:12px;color:var(--ink-3);font-weight:400}
+.pos .p.lk .lab::before{content:"";display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--acc);margin-right:8px}
+.flag{font-size:13px;margin-top:10px;padding:10px 12px;background:var(--surface);border:1px solid var(--line);border-radius:10px}
+.legend{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:22px}
+.legend div{border:1px solid var(--line);border-radius:12px;padding:12px 14px;font-size:13px;color:var(--ink-2);background:var(--surface)}.legend b{display:block;color:var(--ink);font-weight:600;margin-bottom:3px}
+.foot{display:flex;justify-content:space-between;align-items:center;gap:20px;margin-top:26px}
+
+/* agent studio */
+.catg{margin-bottom:28px}
+.catg .ch{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px}
+.catg .ch p{font-size:13px;color:var(--ink-2)}
+.agrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.agent{padding:14px 16px}
+.agent .ah{display:flex;justify-content:space-between;align-items:center;font-weight:500;gap:10px}
+.agent .ah .stt{font-size:12px;color:var(--acc);white-space:nowrap}
+.agent p{font-size:13px;color:var(--ink-2);margin-top:4px}
+.agent .mt{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:10px;font-size:12px;color:var(--ink-3)}.agent .mt b{color:var(--ink-2);font-weight:500}
+.agent .now{font-size:12.5px;margin-top:10px;padding:8px 10px;background:var(--bg);border-radius:8px;color:var(--ink-2)}.agent .now b{color:var(--acc);font-weight:500}
+.agent .cfg{display:flex;gap:8px;margin-top:10px;align-items:center;font-size:12.5px;color:var(--ink-2)}
+.agent .cfg select{width:auto;padding:4px 26px 4px 8px;font-size:12.5px;border-radius:8px}
+.flow{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:28px}
+.flow .src{padding:10px 12px;border:1px solid var(--line);border-radius:10px;font-size:13px;margin-bottom:6px;color:var(--ink-2)}.flow .src b{display:block;color:var(--ink);font-weight:500}
+.log div{display:grid;grid-template-columns:60px 150px 1fr;gap:14px;padding:9px 0;border-bottom:1px solid var(--line);font-size:13px;color:var(--ink-2)}.log .ts{color:var(--ink-3);font-size:12px}.log .ag{color:var(--acc);font-weight:500}
+.log div.new{animation:fade .6s}@keyframes fade{from{background:var(--acc-soft)}to{background:transparent}}
+
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(8px);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:999px;font-size:13.5px;opacity:0;transition:all .18s;pointer-events:none;z-index:50}.toast.on{opacity:1;transform:translateX(-50%)}
+
+/* ---- smoothing ---- */
+.side{border-right:1px solid var(--line);background:var(--bg);padding:24px 18px}
+.nv button.on{background:var(--acc-soft);color:var(--acc)}
+.asset{background:var(--surface);box-shadow:none;border:1px solid var(--line);border-left:3px solid var(--acc)}
+.steps{background:transparent;padding:0;gap:0;border-bottom:1px solid var(--line);border-radius:0}
+.steps button{border-radius:0;border-bottom:2px solid transparent;margin-bottom:-1px;padding:10px 12px 12px}
+.steps button:hover{background:transparent;color:var(--ink)}
+.steps button.on{background:transparent;box-shadow:none;border-bottom-color:var(--acc)}
+.nv button.on{box-shadow:var(--sh)}
+.top{border-bottom:0;padding:14px 32px 6px;background:var(--bg)}
+.crumb{font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--acc);font-weight:600}.crumb span{color:var(--ink-3);margin:0 6px}
+.wrap{max-width:1040px;padding:14px 32px 96px}
+.steps{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin:0 0 30px;padding:6px;background:var(--bg-2);border-radius:16px}
+.steps button{text-align:left;padding:12px 14px;border-radius:12px;color:var(--ink-2);transition:background .15s}
+.steps button:hover{background:var(--bg)}
+.steps button.on{background:var(--bg);color:var(--ink);box-shadow:var(--sh)}
+.steps .no{font-size:11px;color:var(--acc);font-weight:600;letter-spacing:.04em}
+.steps .tt{font-weight:600;font-size:13.5px;margin-top:2px;display:flex;align-items:center;gap:6px}.steps .tt b{font-weight:500;color:var(--ink-3);font-size:12px}
+.steps .ss{font-size:12px;color:var(--ink-3);margin-top:1px}
+.how{border:0;background:var(--acc-soft)}
+.card{box-shadow:none}
+.asset,.nv button.on{box-shadow:none}
+
+.flow3{display:grid;grid-template-columns:1fr 1.5fr 1fr;gap:20px;align-items:start}
+.flow3 h4{margin-bottom:8px}
+.flow3 .src{padding:10px 12px;border:1px solid var(--line);border-radius:10px;font-size:13px;margin-bottom:6px;color:var(--ink-2);background:var(--surface)}.flow3 .src b{display:block;color:var(--ink);font-weight:500}
+.flow3 .mid{padding:0 18px;border-left:1px dashed var(--line-2);border-right:1px dashed var(--line-2)}
+.flow3 .cg{margin:0 0 14px}.flow3 .cg h5{margin:0 0 6px;font-size:12px;color:var(--ink-2);font-weight:600;display:flex;justify-content:space-between}.flow3 .cg h5 span{font-weight:400;color:var(--ink-3)}
+.flow3 .agent{padding:12px 14px;margin-bottom:8px;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+@media (max-width:980px){.flow3{grid-template-columns:1fr}.flow3 .mid{border:0;padding:0}}
+
+/* ===== inspiration pass: journey, eyebrow/title, right pane, flow-line, drawer, legend ===== */
+h1,h2,.ttl,.ah1 h1,.sectionhead{font-family:"Manrope",var(--font)}
+h1{letter-spacing:-0.02em}
+.eyeb,.ah1 .eyeb,.crumb{font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--acc);font-weight:800}
+.crumb span{color:var(--ink-3);margin:0 6px}
+.top{height:60px;padding:0 32px;border-bottom:1px solid var(--line);background:var(--topbg);backdrop-filter:blur(6px)}
+.top .r .av{margin-left:4px}
+/* journey steps */
+.steps{display:flex;gap:0;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--surface);margin:22px 0 30px;padding:0}
+.steps button{flex:1;min-width:130px;border-right:1px solid var(--line);border-bottom:0;margin:0;padding:14px 14px 15px;position:relative;color:var(--ink-3);border-radius:0}
+.steps button:last-child{border-right:0}
+.steps button::before{content:"";position:absolute;left:0;right:0;top:0;height:2px;background:transparent}
+.steps button{background:var(--surface)}
+.steps button.on{background:var(--acc-soft);color:var(--ink);border-bottom-color:transparent}
+.steps button.on::before{background:var(--acc)}
+.steps .no{font-size:10px;letter-spacing:.08em;font-weight:800;color:var(--acc)}
+.steps .tt{font-weight:700;font-size:12.5px;margin-top:3px}
+.steps .ss{font-size:11px;color:var(--ink-3);margin-top:2px}
+/* two-column with right pane */
+.ctx{grid-template-columns:minmax(0,1.5fr) minmax(280px,.85fr);gap:42px}
+.ctx>div:last-child{border-left:1px solid var(--line);padding-left:30px}
+.brow{padding:17px 0}.brow:first-of-type{border-top:1px solid var(--line)}
+.brow b{font-family:"Manrope",var(--font);font-weight:700}
+.focus{border-left:0;border-top:2px solid var(--acc);background:var(--surface);border-radius:0;padding:20px 22px}
+.focus b{font-family:"Manrope",var(--font);font-size:18px;line-height:1.35;font-weight:700}
+.focus a{font-weight:700}
+.focus .choices{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}
+/* evidence chain as flow-line */
+.evl{border-left:1px solid var(--line-2);margin-left:6px;padding-left:22px}
+.evl div{position:relative;border-bottom:0;padding:0 0 16px;display:block}
+.evl div::before{content:"";position:absolute;left:-28px;top:4px;width:10px;height:10px;border-radius:50%;background:var(--bg);border:2px solid var(--line-2)}
+.evl div:first-child::before{background:var(--acc);border-color:var(--acc);box-shadow:0 0 0 4px var(--acc-soft)}
+.evl .mm{display:block;margin-top:2px}
+.agl div{grid-template-columns:170px 1fr}
+/* kicker + section heads */
+.kick{font-size:10px;letter-spacing:.14em;color:var(--ink-3);font-weight:800;text-transform:uppercase}
+.sect h2{font-size:17px}
+/* drawer */
+.shade{position:fixed;inset:0;background:rgba(14,15,18,.32);display:none;justify-content:flex-end;z-index:40}
+.shade.on{display:flex}
+.drawer{background:var(--surface);width:min(560px,100vw);height:100%;overflow:auto;padding:30px 32px;box-shadow:-14px 0 50px rgba(0,0,0,.14);position:relative}
+.drawer .x{position:absolute;right:18px;top:14px;font-size:22px;color:var(--ink-3);width:32px;height:32px;border-radius:8px}.drawer .x:hover{background:var(--bg-2)}
+.drawer .card{border:0;padding:0!important;margin:0!important}
+.drawer h3{font-family:"Manrope",var(--font);font-size:22px;letter-spacing:-0.02em;margin-bottom:6px}
+.drawer .reg .fm{grid-template-columns:1fr 1fr}
+.insp .kv{display:grid;grid-template-columns:120px 1fr;gap:12px;padding:11px 0;border-bottom:1px solid var(--line);font-size:13px}.insp .kv b{color:var(--ink-3);font-weight:500}
+.insp .st{display:flex;align-items:center;gap:8px;color:var(--ink-2);font-size:13px;margin:14px 0 8px}
+/* studio legend + columns */
+.legendrow{display:flex;gap:22px;align-items:center;flex-wrap:wrap;font-size:12.5px;color:var(--ink-2);margin:0 0 22px}
+.legendrow span{display:inline-flex;align-items:center;gap:7px}
+.ld{width:8px;height:8px;border-radius:50%;display:inline-block}.ld.run{background:var(--acc)}.ld.sup{background:var(--bg);border:1.5px solid var(--acc)}.ld.plan{background:var(--line-2)}
+.flow3 h4{font-size:14px;text-transform:none;letter-spacing:0;color:var(--ink-2);font-weight:500;margin-bottom:14px}
+.flow3 h4 small{display:block;font-size:11.5px;color:var(--ink-3);margin-top:2px;font-weight:400}
+.flow3 .src{padding:15px 16px;border-radius:12px;margin-bottom:10px;cursor:pointer;transition:border-color .15s}.flow3 .src:hover{border-color:var(--acc-line)}
+.flow3 .src b{font-size:13.5px}.flow3 .src em{display:block;font-size:10.5px;font-style:normal;color:var(--ink-3);margin-top:6px}
+.flow3 .agent{cursor:pointer;transition:border-color .15s}.flow3 .agent:hover{border-color:var(--acc-line)}
+.agent .ah{align-items:flex-start}.agent .ah span:first-child{font-family:"Manrope",var(--font);font-weight:700;font-size:14.5px;line-height:1.35}
+.agent .ah .stt{color:var(--ink-2);font-size:11.5px;display:inline-flex;align-items:center;gap:6px}
+.agent .ft2{background:var(--bg);border-radius:8px;padding:8px 10px;font-size:11.5px;color:var(--ink-2);display:flex;justify-content:space-between;margin-top:10px}.agent .ft2 span{color:var(--acc)}
+/* sidebar notice */
+.side .ft{border-top:1px solid var(--line);padding-top:14px;font-size:11.5px;line-height:1.6}
+.side .ft b{display:block;font-weight:700;letter-spacing:.06em;font-size:10.5px;color:var(--ink-3)}
+.theme{width:auto;border:1px solid var(--line-2);border-radius:999px;padding:5px 26px 5px 11px;font-size:12.5px;background:var(--surface);color:var(--ink-2)}
+
+/* running agents */
+.runner{display:inline-flex;gap:3px;align-items:flex-end;height:12px;width:16px;margin-right:8px;vertical-align:middle}
+.runner i{display:block;width:3px;background:var(--acc);border-radius:1px;animation:eq 1.1s ease-in-out infinite}
+.runner i:nth-child(2){animation-delay:.2s}.runner i:nth-child(3){animation-delay:.4s}
+.runner.sup i{background:var(--ink-3)}
+@keyframes eq{0%,100%{height:4px}50%{height:12px}}
+.agon div{display:grid;grid-template-columns:auto 1fr;gap:2px 0;padding:7px 0;border-bottom:1px solid var(--line);font-size:13px;align-items:center}
+.agon div b{font-weight:500}.agon div .f{grid-column:2;font-size:12px}
+.scan{position:relative;overflow:hidden}
+.scan::after{content:"";position:absolute;left:-40%;top:0;bottom:0;width:40%;background:linear-gradient(90deg,transparent,var(--acc-soft),transparent);animation:scan 2.6s linear infinite;pointer-events:none}
+@keyframes scan{to{left:110%}}
+.sideagents{border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:var(--surface);font-size:12.5px;color:var(--ink-2)}
+.sideagents b{display:block;color:var(--ink);font-weight:600;margin-bottom:6px;display:flex;align-items:center;gap:8px}
+.sideagents div{display:flex;justify-content:space-between;padding:4px 0;color:var(--ink-3);font-size:12px}
+.sideagents div span:first-child{color:var(--ink-2)}
+.agent .ah .stt .runner{margin:0 2px 0 0}
+/* ---- asset context ---- */
+.ah1{display:flex;justify-content:space-between;align-items:flex-start;gap:20px;margin-bottom:22px}
+.ah1 .eyeb{font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--acc);font-weight:600}
+.ah1 h1{font-size:40px;letter-spacing:-0.03em;margin:4px 0 6px}
+.ah1 .sub{color:var(--ink-2);font-size:15px}
+.ctx{display:grid;grid-template-columns:1.5fr 1fr;gap:40px;align-items:start}
+.ctx h4{margin-bottom:6px}
+.ctx .ttl{font-size:20px;font-weight:600;letter-spacing:-0.015em;margin-bottom:12px}
+.brow{display:grid;grid-template-columns:1fr auto;gap:14px;align-items:center;padding:14px 0;border-bottom:1px solid var(--line)}
+.brow b{display:block;font-weight:600;margin-bottom:2px}.brow span{color:var(--ink-2);font-size:13.5px}
+.brow a{color:var(--acc);font-weight:500;font-size:13.5px;cursor:pointer;white-space:nowrap}
+.focus{border-left:3px solid var(--acc);background:var(--bg-2);padding:16px 18px;border-radius:0 12px 12px 0}
+.focus b{display:block;font-weight:600;margin-bottom:6px;font-size:15px}
+.focus p{color:var(--ink-2);font-size:13.5px}
+.focus a{display:inline-block;margin-top:12px;color:var(--acc);font-weight:600;cursor:pointer}
+.tl{margin-top:36px}
+.tl .hd{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px}
+.tl .hd p{font-size:13px;color:var(--ink-2)}
+.gantt{position:relative;border-top:1px solid var(--line)}
+.gantt .yrs{display:grid;grid-template-columns:260px 1fr;font-size:11.5px;color:var(--ink-3);padding:8px 0 4px}
+.gantt .yrs .ax{display:grid;grid-template-columns:repeat(7,1fr)}
+.gantt .yrs .ax span{border-left:1px solid var(--line);padding-left:6px}
+.gantt .row{display:grid;grid-template-columns:260px 1fr;align-items:center;padding:7px 0;border-bottom:1px solid var(--line)}
+.gantt .row .lab b{display:block;font-weight:500;font-size:13.5px}.gantt .row .lab span{font-size:12px;color:var(--ink-3)}
+.gantt .lane{position:relative;height:26px;background:repeating-linear-gradient(90deg,transparent 0 calc(100%/7 - 1px),var(--line) calc(100%/7 - 1px) calc(100%/7))}
+.gantt .bar{position:absolute;top:4px;height:18px;border-radius:9px;background:var(--surface);border:1px solid var(--line-2);cursor:pointer;display:flex;align-items:center;padding:0 8px;font-size:11px;color:var(--ink-2);white-space:nowrap;overflow:hidden;transition:transform .12s}
+.gantt .bar:hover{transform:translateY(-1px);border-color:var(--acc)}
+.gantt .bar.ours{background:var(--acc);border-color:var(--acc);color:#fff;font-weight:600}
+.gantt .bar.appr{background:var(--ink);border-color:var(--ink);color:var(--bg)}
+.gantt .bar .ro{position:absolute;right:6px;top:4px;width:8px;height:8px;border-radius:50%;background:var(--bg);border:2px solid currentColor}
+.gantt .now{position:absolute;top:0;bottom:0;width:1px;background:var(--acc);opacity:.5}
+.tip{position:fixed;z-index:60;background:var(--ink);color:var(--bg);padding:10px 12px;border-radius:10px;font-size:12.5px;max-width:300px;pointer-events:none;opacity:0;transition:opacity .1s;line-height:1.45}
+.tip.on{opacity:1}.tip b{display:block;margin-bottom:4px;font-weight:600}.tip span{opacity:.75}
+.tdet{display:none;margin-top:14px;padding:16px 18px;background:var(--surface);border:1px solid var(--line);border-radius:14px}
+.tdet.on{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+.tdet div b{display:block;font-size:12px;color:var(--ink-3);font-weight:500;margin-bottom:3px}
+.tdet div span{font-size:13.5px}
+.pools{margin-top:36px}
+.pools .pg{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:12px}
+.pools .pc{padding:14px 16px;border-radius:14px;background:var(--surface);border:1px solid var(--line)}
+.pools .pc b{display:block;font-size:22px;font-weight:600;color:var(--acc)}.pools .pc span{font-size:13px;color:var(--ink-2)}.pools .pc small{display:block;font-size:12px;color:var(--ink-3);margin-top:4px}
+@media (max-width:980px){.steps{grid-template-columns:1fr 1fr}.ctx,.tdet.on{grid-template-columns:1fr}.gantt .row,.gantt .yrs{grid-template-columns:1fr}.pools .pg{grid-template-columns:1fr}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+@media (max-width:980px){.app.on{grid-template-columns:1fr}.side{position:static;height:auto}.hero h1{font-size:36px}.shot .body,.pillars,.two,.mk,.how .b,.legend,.flow,.agrid{grid-template-columns:1fr}.streams .g{grid-template-columns:1fr 1fr}.k{grid-template-columns:1fr 1fr}.k div{padding:8px 0;border-left:0}.h .tp{grid-template-columns:1fr 28px}.h .tp .cf,.h .tp .mv{display:none}.det,.di .chain,.reg .fm{grid-template-columns:1fr}.pos .p{grid-template-columns:1fr}.pos .side2{align-items:flex-start;text-align:left}.models .row{grid-template-columns:1fr 1fr}.fun .fr{grid-template-columns:1fr 60px}.fun .b{display:none}}
+</style>
+</head>
+<body>
+
+<!-- ============ LANDING ============ -->
+<section class="landing" id="landing">
+  <div class="lbar"><div class="mark"><div><b>Decision Intelligence</b><small>by <em>ZS</em></small></div></div><nav style="display:flex;gap:8px;align-items:center"><select class="theme" aria-label="Theme" data-theme-sel><option value="system">System theme</option><option value="light">Light</option><option value="dark">Dark</option></select><button class="btn" id="share1">Share</button><button class="btn p" id="enter1">Enter the Astellas program</button></nav></div>
+  <div class="hero">
+    <span class="eyebrow"><span class="dot pulse"></span>Always-on agents refreshed 6 sources in the last hour</span>
+    <h1>Clinical decisions, <em>with intelligence</em> behind them</h1>
+    <p class="sub">Every R&amp;D decision rests on a handful of beliefs about the world at launch. Register them. Attach agents that watch the world and Astellas's own knowledge. Let the evidence move the beliefs, propose the decisions, and simulate the trade-offs before they reach governance.</p>
+    <div class="cta"><button class="btn p lg" id="enter2">Open the CLDN18.2 program</button><button class="btn lg" id="req">Request access for my program</button></div>
+  </div>
+  <div class="shot"><div class="frame"><div class="fb"><i></i><i></i><i></i></div><div class="body">
+    <div class="sb"><div class="on">What's changed</div><div>Hypothesis tracking</div><div>Signals</div><div>Decision workbench</div><div>Simulate</div><div>Positions</div><div style="margin-top:14px;font-size:11px;letter-spacing:.1em;color:var(--ink-3)">AGENT STUDIO</div><div>Always-on · 4</div><div>Daily · 2</div><div>On event · 4</div></div>
+    <div class="col"><h4>Hypotheses this week</h4><div class="ln"><div>H1 · Broad cutoff becomes standard by 2030<div class="b"><i style="width:71%"></i></div></div><b>71%</b></div><div class="ln"><div>H6 · Triplet is the real-world comparator<div class="b"><i style="width:69%"></i></div></div><b>69%</b></div><div class="ln"><div>H2 · US reflex testing above 70% at launch<div class="b"><i style="width:69%"></i></div></div><b>69%</b></div><div class="ln"><div>H5 · Payload active regardless of expression<div class="b"><i style="width:53%"></i></div></div><b>53%</b></div></div>
+    <div class="col"><h4>Decisions proposed</h4><div class="sg">Broaden the label population<span>H1 and H2 both rising · 3 options simulated</span></div><div class="sg">Confirm or change the control arm<span>H6 crossed 65% · comparator line reopened</span></div><div class="sg">Re-anchor the differentiation claim<span>H1 up, H5 down · tolerability story</span></div></div>
+  </div></div></div>
+  <div class="pillars">
+    <div><h3><i>1</i>Register beliefs</h3><p>Hypotheses with an owner, a starting confidence, a threshold, and the agents that will look for evidence.</p></div>
+    <div><h3><i>2</i>Agents watch</h3><p>Always-on agents for the world; daily agents for Astellas's ad boards, RWE and portfolio memory; event agents for implication and simulation.</p></div>
+    <div><h3><i>3</i>Decisions are proposed</h3><p>When hypotheses move in combination, the workbench proposes the decision, the options, and the evidence chain.</p></div>
+    <div><h3><i>4</i>Positions are locked</h3><p>Each TPP line is a position with an owner and a sign-off, tied to its hypotheses so a threshold crossing reopens it.</p></div>
+  </div>
+  <div class="streams"><div style="display:flex;justify-content:space-between;align-items:baseline"><h2>One pattern, five decision types</h2><span class="f s">from the CI vision discussion, Sep 2026</span></div>
+    <div class="g"><div class="st"><b>TA / DA strategy</b>Where to play and how to win<span>Landscape · whitespace · wargaming</span></div><div class="st live"><b>TPP / CDP strategy</b>How the asset must perform, and what evidence when<span>● Live: CLDN18.2 · ASP-C2</span></div><div class="st"><b>Clinical program &amp; protocol</b>A competitive, executable design<span>Design benchmark · HA precedent</span></div><div class="st"><b>Feasibility &amp; planning</b>Geographies, sites, investigators<span>Competing-trial demand · site intel</span></div><div class="st"><b>BD &amp; licensing</b>Which assets, at what value<span>Asset scouting · PTRS sweet spot</span></div></div></div>
+  <div class="lfoot"><span>Illustrative mockup · synthetic data · ZS 2026</span><span>Prepared for Astellas R&amp;D</span></div>
+</section>
+
+<!-- ============ APP ============ -->
+<div class="app" id="app">
+<aside class="side">
+  <div class="mark"><div><b>Decision Intelligence</b><small>by <em>ZS</em></small></div></div>
+  <div><h4>Workspace</h4><div class="nv"><button class="on" id="navWs"><i></i>Decision workspace</button><button id="navStudio"><i class="o"></i>Agent Studio<span class="n" id="agN"></span></button></div></div>
+  <div class="sideagents" id="sideAgents"></div>
+  <div><h4>Your assets</h4><div id="assets"></div><button class="onb" id="onboard">+ Onboard asset</button></div>
+  <div><h4>Viewing as</h4><select id="roleSel" class="theme" style="width:100%;border-radius:10px"><option value="da">Asset lead</option><option value="clin">Clinical</option><option value="access">Access &amp; pricing</option><option value="comm">Forecasting</option><option value="ops">Operations</option></select></div>
+  <div class="ft"><b>DEMONSTRATION ENVIRONMENT</b>Monitoring and execution are simulated. Not connected to internal systems.</div>
+</aside>
+<div class="main">
+  <header class="top">
+    <div class="crumb" id="crumb">Decision workspace <span>/</span> ASP-C2</div>
+    <div class="r"><span>Astellas concept · Demo mode</span><span id="today"></span><select class="theme" aria-label="Theme" data-theme-sel><option value="system">System theme</option><option value="light">Light</option><option value="dark">Dark</option></select><button class="btn sm" id="share2">Share</button><button class="btn sm" id="toLanding">Overview</button><span class="av">MK</span></div>
+  </header>
+
+  <!-- workspace -->
+  <div class="wrap" id="ws">
+    <nav class="steps tabs" role="tablist">
+      <button class="on" data-v="asset"><div class="no">01</div><div class="tt">Asset context</div><div class="ss">What are we developing?</div></button>
+      <button data-v="brief"><div class="no">02</div><div class="tt">What's changed</div><div class="ss">Since you last looked</div></button>
+      <button data-v="wb"><div class="no">03</div><div class="tt">Hypotheses <b id="nWb"></b></div><div class="ss">What are we testing?</div></button>
+      <button data-v="sig"><div class="no">04</div><div class="tt">Signals <b id="nSig"></b></div><div class="ss">What did agents find?</div></button>
+      <button data-v="hub"><div class="no">05</div><div class="tt">Decision workbench <b id="nDec"></b></div><div class="ss">What is proposed?</div></button>
+      <button data-v="sim"><div class="no">06</div><div class="tt">Simulate</div><div class="ss">What if we chose differently?</div></button>
+      <button data-v="pos"><div class="no">07</div><div class="tt">Positions <b id="nPos"></b></div><div class="ss">What do we commit to?</div></button>
+    </nav>
+
+    <section class="view on" id="asset">
+      <div class="ah1"><div><div class="eyeb" id="aEye"></div><h1 id="aTitle"></h1><div class="sub" id="aSub"></div></div></div>
+      <div class="ctx">
+        <div><h4>Asset brief</h4><div class="ttl">A shared context for every decision</div>
+          <div id="briefRows"></div>
+        </div>
+        <div><h4>Today's focus</h4><div class="ttl">A decision, not another report</div><div class="focus" id="focus"></div></div>
+      </div>
+      <div class="tl"><div class="hd"><div><h3>Trials that shape this decision</h3><p>Ours and the competing programs for the same patients. Hover for the profile; click for the detail. Expected primary completion sets the bar we will be measured against.</p></div></div>
+        <div class="gantt" id="gantt"></div><div class="tdet" id="tdet"></div></div>
+      <div class="pools"><h3>Patient pools the designs compete for</h3><div class="pg" id="pools"></div></div>
+    </section>
+
+    <section class="view" id="brief"></section>
+
+    <section class="view" id="wb">
+      <div class="sect"><div><h2>Hypothesis tracking</h2><p>The beliefs behind each TPP line, who owns them, and the agents watching for evidence.</p></div><button class="btn p" id="openReg">+ Register hypothesis</button></div>
+      <details class="how"><summary>Hypotheses</summary><div class="b"><div><b>What it is</b>A falsifiable statement about the market at launch, tied to one TPP line. Confidence starts at the owner's judgment.</div><div><b>Who owns it</b>The function responsible for that TPP line: Clinical for comparator and endpoints, Access for pricing, Forecasting for testing and demand, Operations for timeline.</div><div><b>How it updates</b>Attached agents surface signals; the Implication agent proposes a move; the owner applies or dismisses. Crossing the threshold reopens the position.</div></div></details>
+      <div class="reg card" id="reg" style="display:none;padding:18px 20px"><h3>Register a hypothesis</h3>
+        <div class="fm">
+          <div class="full"><label>Statement — falsifiable, about the world at launch</label><input type="text" id="rT" placeholder="e.g. Ex-China enrollment completes within 22 months despite 14 competing trials"></div>
+          <div><label>TPP line it supports</label><select id="rL"><option>Population</option><option>Intervention</option><option>Comparator</option><option>Outcomes</option><option>Price &amp; access</option><option>Timeline</option></select></div>
+          <div><label>Owner</label><select id="rO"><option>Asset lead</option><option>Clinical</option><option>Access &amp; pricing</option><option>Forecasting</option><option>Operations</option></select></div>
+          <div><label>Starting confidence (%)</label><input type="number" id="rC" value="50" min="5" max="95"></div>
+          <div><label>Threshold that reopens the line (%)</label><input type="number" id="rTh" value="70" min="5" max="99"></div>
+          <div class="full"><label>What would change my mind</label><input type="text" id="rW" placeholder="The observable event that should move this, e.g. two Phase 3 starts with a broad cutoff"></div>
+          <div class="full"><label>Attach agents from the catalog</label><div class="chips" id="rA"></div></div>
+          <div class="full" style="display:flex;gap:10px;align-items:center"><button class="btn sm" id="draftAg">+ Draft a new agent for this hypothesis</button><span class="f xs">New agents start supervised and join the catalog.</span></div>
+          <div class="draft" id="draft"><b class="s">New agent</b><div class="g"><input type="text" id="dN" placeholder="Agent name"><select id="dCat"><option value="always">Always-on · 6h</option><option value="daily">Daily</option><option value="event">On event</option></select><select id="dK"><option value="world">World knowledge</option><option value="astellas">Astellas knowledge</option><option value="models">Models</option></select></div><input type="text" id="dD" placeholder="What it reads and what it extracts" style="margin-top:8px"></div>
+        </div>
+        <div class="ft"><span class="f s">Agents begin scanning for this hypothesis on their next cycle.</span><div style="display:flex;gap:8px"><button class="btn sm" id="regCancel">Cancel</button><button class="btn sm p" id="regSave">Register</button></div></div>
+      </div>
+      <div id="wbList"></div>
+    </section>
+
+    <section class="view" id="sig">
+      <div class="sect"><div><h2>Signals</h2><p>Only items that touch a hypothesis. Each carries the agent that found it and a proposed move.</p></div><button class="btn" id="applyAll">Apply all remaining</button></div>
+      <details class="how"><summary>Signals</summary><div class="b"><div><b>What it is</b>A detectable change in the world or in Astellas's own knowledge, with a one-line "so what" for this decision.</div><div><b>Who owns it</b>The agent that found it is named on each signal; the hypothesis owner decides whether to apply the proposed move.</div><div><b>How the move is sized</b>Evidence strength × source reliability × relevance. A registry Phase 3 start is strong; an investor-call remark is weak. Overrides are logged.</div></div></details>
+      <details class="mail" id="mail"></details>
+      <div id="sigList"></div>
+    </section>
+
+    <section class="view" id="hub">
+      <div class="sect"><div><h2>Decision workbench</h2><p id="hubLede"></p></div></div>
+      <details class="how"><summary>Proposed decisions</summary><div class="b"><div><b>What it is</b>Decisions proposed from combinations of hypothesis movement — not a fixed list. Each names the trigger that fired, the evidence, and the options.</div><div><b>Who owns it</b>The owner of the affected TPP line frames and takes the decision; contributors see the same chain in their view.</div><div><b>How it works</b>Every hypothesis carries a "what would change my mind" trigger. When triggers fire together, a decision pattern proposes options and the Simulation agent prices them with today's confidences.</div></div></details>
+      <div id="decItems"></div>
+      <div class="near" id="near"></div>
+    </section>
+
+    <section class="view" id="sim">
+      <div class="sect"><div><h2>Simulate</h2><p>One set of levers, five linked models. Hypothesis confidences set the parameters.</p></div><button class="btn" id="reset">Reset levers</button></div>
+      <div class="levers" id="levers">
+        <span class="lv">Cutoff <select data-k="cutoff"><option value="75">≥75%</option><option value="50">≥50%</option><option value="1">≥1%</option></select></span>
+        <span class="lv">Comparator <select data-k="comp"><option value="triplet">chemo + PD-1 + zolbetuximab</option><option value="doublet">chemo + PD-1</option></select></span>
+        <span class="lv">Endpoint <select data-k="ep"><option value="pfs">PFS</option><option value="os">OS</option></select></span>
+        <span class="lv">Footprint <select data-k="geo"><option value="global">global</option><option value="exchina">ex-China</option><option value="west">US + EU heavy</option></select></span>
+        <button class="lv tg" data-k="dose"><span class="dot"></span>Dose cohort</button>
+        <button class="lv tg" data-k="panc"><span class="dot"></span>Pancreatic cohort</button>
+        <button class="lv tg" data-k="bio"><span class="dot"></span>Biologic</button>
+      </div>
+      <div class="mtabs" id="mtabs"><button data-m="pop">Population &amp; demand</button><button data-m="ptrs">Probability of success</button><button data-m="price">Price &amp; access</button><button data-m="feas">Feasibility</button><button data-m="bc">Business case</button></div>
+      <div class="model" id="m-pop"></div><div class="model" id="m-ptrs"></div><div class="model" id="m-price"></div><div class="model" id="m-feas"></div><div class="model" id="m-bc"></div>
+      <div class="models"><div class="sect"><div><h3>Models underneath</h3><p>What each model reads, what it returns, and whether it is Astellas's engine or a stand-in.</p></div></div><div id="modelRows"></div></div>
+    </section>
+
+    <section class="view" id="pos">
+      <div class="sect"><div><h2>Positions</h2><p>The TPP is six positions. Each is a sentence, an owner, a confidence, and a sign-off.</p></div></div>
+      <div class="legend"><div><b>Provisional</b>Proposed by the owner; the evidence supports it today but the team has not signed off.</div><div><b>Locked</b>The owner signed off and contributors acknowledged. Versioned with the confidences and ranges at that moment.</div><div><b>Reopened</b>A hypothesis behind it crossed its threshold since the lock. The sign-off no longer stands by default.</div></div>
+      <div class="pos" id="posList"></div>
+      <div class="foot"><p class="m s" style="max-width:60ch">Export freezes the six positions with their hypotheses, the signals that moved them, the alternatives considered and the scenario ranges as a versioned TPP record.</p><button class="btn p" id="export">Export TPP v0.5</button></div>
+    </section>
+  </div>
+
+  <!-- agent studio -->
+  <div class="wrap" id="studio" style="display:none">
+    <div class="sect"><div><h2>Agent Studio</h2><p>Two kinds of knowledge on either side, the agents in between. Attach them to hypotheses, change their cadence, or draft a new one.</p></div><button class="btn p" id="newAg">+ Draft a new agent</button></div>
+    <details class="how"><summary>Agents</summary><div class="b"><div><b>Always-on</b>Scan external sources on a fixed cycle (default every 6 hours) with change detection, so only deltas are processed.</div><div><b>Daily</b>Index Astellas's own material — ad boards, field notes, RWE, portfolio memory — once a day, with medical validation before anything surfaces.</div><div><b>On event</b>Run when something happens: a signal arrives (Implication), a confidence changes (Simulation), a brief is requested, or any claim is made (Guardrail).</div></div></details>
+    <div class="card" id="agForm" style="display:none;padding:18px 20px;margin-bottom:22px"><h3>Draft a new agent</h3><div class="reg"><div class="fm" style="margin-top:12px"><div class="full"><label>Name</label><input type="text" id="aN" placeholder="e.g. HTA precedent agent"></div><div><label>Category</label><select id="aCat"><option value="always">Always-on · every 6h</option><option value="daily">Daily</option><option value="event">On event</option></select></div><div><label>Reads</label><select id="aK"><option value="world">World knowledge</option><option value="astellas">Astellas knowledge</option><option value="models">Models</option></select></div><div class="full"><label>What it does</label><textarea id="aD" placeholder="Sources it reads, what it extracts, which hypotheses or models it feeds"></textarea></div><div class="full"><label>Attach to hypotheses</label><div class="chips" id="aH"></div></div></div><div class="ft"><span class="f s">Starts supervised: every proposal is reviewed for eight weeks.</span><div style="display:flex;gap:8px"><button class="btn sm" id="aCancel">Cancel</button><button class="btn sm p" id="aSave">Create agent</button></div></div></div></div>
+    <div class="legendrow"><span><i class="ld run"></i>Running</span><span><i class="ld sup"></i>Supervised · proposals reviewed</span><span><i class="ld plan"></i>Planned · not deployed</span><span style="margin-left:auto" class="f">Click any card for the inspector</span></div>
+    <div class="flow3">
+      <div><h4>World knowledge<small>Public sources the always-on agents read</small></h4><div class="src"><b>Registries</b>ClinicalTrials.gov, EU CTR, jRCT<em>Public · read by Registry watch</em></div><div class="src"><b>Congresses &amp; literature</b>ESMO, ASCO GI, PubMed<em>Public · read by Congress &amp; literature</em></div><div class="src"><b>Regulators &amp; HTA</b>FDA, EMA, G-BA, NICE, JCA<em>Public · read by Regulatory &amp; HTA watch</em></div><div class="src"><b>Market</b>Deals, earnings calls, treatment patterns<em>Licensed feeds · read by Market &amp; deals</em></div></div>
+      <div class="mid"><h4>Agents<small>Grouped by how often they run</small></h4><div id="catalog"></div></div>
+      <div><h4>Astellas knowledge<small>Proprietary material, validated before it surfaces</small></h4><div class="src"><b>Advisory boards &amp; KOL notes</b>Synthesized, medical-validated<em>Restricted · read by Institutional memory</em></div><div class="src"><b>Internal RWE &amp; claims</b>Testing and treatment feeds<em>Restricted · read by Institutional memory</em></div><div class="src"><b>Portfolio memory</b>Prior TPPs, forecasts vs. actuals, decision records<em>Restricted · read by Portfolio memory</em></div><div class="src"><b>Translational data</b>Payload and expression studies<em>Restricted · not yet connected</em></div></div>
+    </div>
+    <h3 style="margin:30px 0 8px">Activity</h3><div class="log" id="alog"></div>
+  </div>
+</div>
+</div>
+<div class="shade" id="shade"><div class="drawer" id="drawer"><button class="x" id="drawerX" aria-label="Close">×</button><div id="drawerBody"><div class="reg card" id="onbForm" style="display:none"><span class="kick">New asset</span><h3>Onboard an asset</h3><p class="m s">The same seven-step workflow starts for every asset. Agents begin once the first hypothesis is registered.</p><div class="fm"><div><label>Asset code or name</label><input type="text" id="obN" placeholder="e.g. ASP-3082"></div><div><label>Phase</label><select id="obP"><option>Preclinical</option><option>Phase 1</option><option selected>Phase 2</option><option>Phase 3</option><option>Approved</option></select></div><div class="full"><label>Mechanism / target</label><input type="text" id="obM" placeholder="e.g. KRAS G12D inhibitor"></div><div class="full"><label>Indication and line</label><input type="text" id="obI" placeholder="e.g. 1L metastatic pancreatic cancer"></div><div><label>Decision type</label><select id="obD"><option>TPP / CDP strategy</option><option>TA / DA strategy</option><option>Clinical program &amp; protocol</option><option>Feasibility &amp; planning</option><option>BD &amp; licensing</option></select></div><div><label>Owner</label><select id="obO"><option>Asset lead</option><option>Clinical</option><option>Access &amp; pricing</option><option>Forecasting</option><option>Operations</option></select></div><div class="full"><label>Governance forum and date</label><input type="text" id="obG" placeholder="e.g. Investment committee · Mar 2027"></div></div><div class="ft"><span class="f s">Edit any of this later from Asset context.</span><div style="display:flex;gap:8px"><button class="btn sm" id="obCancel">Cancel</button><button class="btn sm p" id="obSave">Create workspace</button></div></div></div></div><div class="insp" id="insp" style="display:none"></div></div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* =================== data =================== */
+const ROLES={da:{own:'Asset lead',model:'bc',lede:'Three positions are provisional and one may reopen this week. The business-case range is driven mostly by testing uptake and competitor timing.'},clin:{own:'Clinical',model:'ptrs',lede:'The comparator and dose-cohort questions are live. Two signals this week bear on PTRS; one weakens the differentiation hypothesis.'},access:{own:'Access & pricing',model:'price',lede:'Endpoint choice decides the premium in Germany and the UK. A G-BA precedent landed this week.'},comm:{own:'Forecasting',model:'pop',lede:'Testing rate is the gate on realizable demand. Two signals moved it this week.'},ops:{own:'Operations',model:'feas',lede:'Competing CLDN18.2 trials in Asia rose again. The enrollment model applies a larger drag to Japan, Korea and China.'}};
+let role='da';
+
+const AGENTS=[
+ {id:'reg',n:'Registry watch',cat:'always',k:'world',every:'6h',d:'Diffs ClinicalTrials.gov, EU CTR and jRCT; extracts cutoff, comparator, endpoint, sample size and sites.',now:'1,180 changes diffed · 2 matched the CLDN18.2 watch-list'},
+ {id:'cong',n:'Congress & literature',cat:'always',k:'world',every:'6h',d:'Reads ESMO, ASCO GI and PubMed; extracts efficacy and safety tables by subgroup.',now:'ESMO 2026 LBA-14 efficacy table extracted'},
+ {id:'hta',n:'Regulatory & HTA watch',cat:'always',k:'world',every:'6h',d:'Tracks FDA, EMA, G-BA, NICE and JCA decisions and guidance; classifies by endpoint and evidence basis.',now:'G-BA resolution parsed · OS-based rating'},
+ {id:'mkt',n:'Market & deals',cat:'always',k:'world',every:'6h',d:'Deal databases, earnings calls, treatment-pattern feeds; flags capital flows and share shifts.',now:'Triplet share update ingested · US 31%, JP 44%'},
+ {id:'inst',n:'Institutional memory',cat:'daily',k:'astellas',every:'daily',d:'Indexes ad-board notes, field observations and internal RWE; medical lead validates before anything surfaces.',now:'Ad board 14 Oct synthesized · pancreatic theme'},
+ {id:'mem',n:'Portfolio memory',cat:'daily',k:'astellas',every:'daily',d:'Compares prior TPPs and forecasts with actuals; proposes haircuts and reusable lessons.',now:'2023 Vyloy testing forecast vs 2026 actuals: −20 pts'},
+ {id:'imp',n:'Implication agent',cat:'event',k:'both',every:'on signal',d:'Maps each signal to hypotheses, weights by evidence strength and source reliability, proposes the move and writes the "so what". Fires decision patterns.',now:'Scoring LBA-14 against H1, H5, H8'},
+ {id:'simu',n:'Simulation agent',cat:'event',k:'models',every:'on change',d:'Re-parameterises the five models from current confidences; runs scenario sets; reports which hypotheses drive the spread.',now:'500 scenarios · H2 and H7 explain 61% of variance'},
+ {id:'brief',n:'Brief agent',cat:'event',k:'both',every:'on request',d:'Assembles the governance brief: positions, evidence with citations, alternatives considered, what would change our mind.',now:'Comparator section · 3 citations pending review'},
+ {id:'guard',n:'Guardrail agent',cat:'event',k:'models',every:'continuous',d:'Requires a source and retrieval date on every claim, blocks unverifiable facts, seals the audit log.',now:'2 unmatched signals held for triage'}
+];
+const CATN={always:['Always-on','External sources on a fixed cycle. Default every 6 hours.'],daily:['Daily','Astellas knowledge, indexed once a day with validation.'],event:['On event','Run when a signal lands, a confidence changes, or a brief is requested.']};
+const KN={world:'World',astellas:'Astellas',both:'Both',models:'Models'};
+
+let H=[
+ {id:'H1',cat:'Population',t:'By 2030, CLDN18.2 positivity will be defined by a broad cutoff (any expression, ≥1%), not ≥75% moderate-to-strong.',own:'Asset lead',start:55,conf:55,thr:75,line:'Population',change:'Two or more Phase 3 starts with a broad cutoff, or efficacy shown to hold in low expressers.',agents:['reg','cong','imp'],trail:[{d:0,s:'Set at kickoff from landscape review',w:'7 Oct'}]},
+ {id:'H2',cat:'Population',t:'Reflex CLDN18.2 testing will exceed 70% of HER2-negative advanced gastric patients in the US by launch.',own:'Forecasting',start:55,conf:55,thr:70,line:'Population',change:'A guideline reflex recommendation plus two quarters above 55% in claims.',agents:['hta','inst','mem'],trail:[{d:0,s:'Set at kickoff; prior Vyloy forecast missed by ~20 pts',w:'7 Oct'}]},
+ {id:'H3',cat:'Population',t:'Pancreatic adenocarcinoma is a viable expansion indication with ≥40% actionable expression.',own:'Asset lead',start:50,conf:50,thr:65,line:'Population',change:'Competitor ORR ≥30% in pancreatic with manageable GI toxicity.',agents:['cong','inst'],trail:[{d:0,s:'Set at kickoff',w:'7 Oct'}]},
+ {id:'H4',cat:'Intervention',t:'Regulators will expect randomized dose-optimization data for any new ADC pivotal.',own:'Clinical',start:70,conf:70,thr:80,line:'Intervention',change:'An FDA action on an ADC dossier citing dose justification.',agents:['hta'],trail:[{d:0,s:'Set at kickoff from Project Optimus guidance',w:'7 Oct'}]},
+ {id:'H5',cat:'Intervention',t:'Our payload is active independent of expression level, which competitors cannot claim.',own:'Clinical',start:60,conf:60,thr:75,line:'Intervention',change:'Competitor subgroup data in low expressers matching ours, or Phase 2 failing to replicate PDX findings.',agents:['cong','inst'],trail:[{d:0,s:'Set at kickoff from translational data',w:'7 Oct'}]},
+ {id:'H6',cat:'Comparator',t:'The 1L control at readout will be chemo + PD-1 + zolbetuximab; chemo + PD-1 alone will not be acceptable.',own:'Clinical',start:60,conf:60,thr:75,line:'Comparator',change:'Triplet share above 40% in US or Japan, or HA advice rejecting the doublet.',agents:['mkt','hta'],trail:[{d:0,s:'Set at kickoff',w:'7 Oct'}]},
+ {id:'H7',cat:'Comparator',t:'At least one competitor CLDN18.2 ADC will reach 1L approval before our pivotal reads out.',own:'Asset lead',start:45,conf:45,thr:60,line:'Comparator',change:'A competitor Phase 3 fully enrolled by mid-2027.',agents:['reg','mkt'],trail:[{d:0,s:'Set at kickoff',w:'7 Oct'}]},
+ {id:'H8',cat:'Outcomes',t:'The competitive efficacy bar in 1L will be PFS HR ≤0.65 with a positive OS trend; HR ≤0.55 is the target.',own:'Clinical',start:65,conf:65,thr:80,line:'Outcomes',change:'Any 1L CLDN18.2 readout with PFS HR below 0.60.',agents:['cong'],trail:[{d:0,s:'Set at kickoff from zolbetuximab precedent',w:'7 Oct'}]},
+ {id:'H9',cat:'Business',t:'Payers will accept a premium over zolbetuximab only with meaningful OS benefit or a clear tolerability advantage.',own:'Access & pricing',start:70,conf:70,thr:80,line:'Price & access',change:'An HTA body rating a CLDN18.2 therapy on PFS alone as added benefit.',agents:['hta'],trail:[{d:0,s:'Set at kickoff from G-BA and NICE precedents',w:'7 Oct'}]},
+ {id:'H10',cat:'Business',t:'Trial competition in Korea, Japan and China will extend enrollment by 6–12 months unless the footprint is rebalanced.',own:'Operations',start:55,conf:55,thr:70,line:'Timeline',change:'More than 12 competing CLDN18.2 trials recruiting in KR/JP/CN, or site activation lagging a quarter.',agents:['reg','simu'],trail:[{d:0,s:'Set at kickoff',w:'7 Oct'}]}
+];
+const CATS=['Population','Intervention','Comparator','Outcomes','Business'];
+const open={};
+
+let DAYS=[
+ {label:'Wednesday 21 Oct',sigs:[
+  {id:'s5',hi:true,ag:'cong',t:'ESMO late-breaker: Sponsor A ADC ORR 42% in CLDN18.2-high 2L, 38% in low expressers',src:'ESMO 2026 abstract',so:'Efficacy holds across expression. "More patients" becomes credible for a competitor first; our differentiation claim weakens.',mv:[['H1',8],['H5',-7],['H8',3]]},
+  {id:'s6',hi:false,ag:'mkt',t:'Sponsor C pancreatic Phase 2 interim: ORR 24%, grade ≥3 nausea/vomiting 30%',src:'Press release · investor call',so:'Activity in pancreatic is real; tolerability may cap combinations.',mv:[['H3',3]]}]},
+ {label:'Tuesday 20 Oct',sigs:[
+  {id:'s3',hi:false,ag:'hta',t:'FDA Oncology Center of Excellence: randomized dose data expected for new ADC pivotals',src:'FDA OCE publication',so:'A dose cohort is table stakes; removing it raises regulatory risk.',mv:[['H4',7]]},
+  {id:'s4',hi:true,ag:'reg',t:'14 competing CLDN18.2 trials recruiting in Korea, Japan and China; 6 opened in two quarters',src:'Registry · site activation tracker',so:'Site and patient competition will slow enrollment in Asia.',mv:[['H10',9]]}]},
+ {label:'Monday 19 Oct',sigs:[
+  {id:'s1',hi:true,ag:'reg',t:'Sponsor A opens Phase 3 of its CLDN18.2 ADC in 1L G/GEJ with a ≥1% cutoff (n≈650)',src:'ClinicalTrials.gov',so:'The future bar moves toward broad expression; a ≥75%-only label risks being the narrower option at launch.',mv:[['H1',8],['H7',6]]},
+  {id:'s2',hi:false,ag:'inst',t:'Internal claims refresh: US community testing rose 38% → 51% year over year',src:'Astellas RWE · claims and lab feed',so:'Trajectory supports ~70% by 2029 if reflex testing lands. Seen here first.',mv:[['H2',6]]}]},
+ {label:'Friday 16 Oct',sigs:[
+  {id:'s9',hi:true,ag:'mkt',t:'Treatment-pattern data: triplet now 31% of eligible US 1L starts; 44% in Japan',src:'Treatment pattern dataset',so:'The triplet is becoming the real-world control arm.',mv:[['H6',9]]},
+  {id:'s10',hi:false,ag:'hta',t:'G-BA grants "considerable added benefit" on OS to a CLDN18.2 therapy after a PFS-only submission was rated non-quantifiable',src:'G-BA resolution (illustrative)',so:'Confirms OS or tolerability is needed for a premium in Germany.',mv:[['H9',6]]}]},
+ {label:'Thursday 15 Oct',sigs:[
+  {id:'s7',hi:true,ag:'hta',t:'NCCN adds reflex CLDN18.2 IHC at diagnosis for HER2-negative advanced gastric cancer',src:'NCCN guideline v4.2026',so:'Testing becomes default; US testing assumptions can move up.',mv:[['H2',8]]},
+  {id:'s8',hi:false,ag:'inst',t:'Ad board (8 KOLs): pancreatic expression is heterogeneous and OS is a hard endpoint',src:'Advisory board notes · medical-validated',so:'Pancreatic viable as exploratory cohort, not co-primary.',mv:[['H3',-8]]}]}
+];
+let acc={};let locked={};
+
+/* decision patterns: trigger over hypothesis confidences → proposed decision */
+const PATTERNS=[
+ {id:'broaden',title:'Broaden the label population',line:'Population',lever:'cutoff',when:c=>c.H1>=0.65&&c.H2>=0.6,trig:'H1 ≥ 65% and H2 ≥ 60%',why:'Broad expression is becoming the standard and testing is catching up — the narrow label would leave patients to competitors.',opts:[['75','Keep ≥75%, defend on effect size'],['50','Hedge at ≥50%'],['1','Go broad, ≥1%']]},
+ {id:'reanchor',title:'Re-anchor the differentiation claim',line:'Intervention',lever:'ep',when:c=>c.H1>=0.6&&c.H5<=0.55,trig:'H1 ≥ 60% and H5 ≤ 55%',why:'Broad expression is normalizing while payload-independence weakens; the story has to move to tolerability or outcomes.',opts:[['pfs','PFS primary, tolerability-led story'],['os','OS primary, outcomes-led story']]},
+ {id:'control',title:'Confirm or change the control arm',line:'Comparator',lever:'comp',when:c=>c.H6>=0.68,trig:'H6 ≥ 68%',why:'The triplet is becoming the real-world control; a doublet comparator will be questioned by HAs and payers.',opts:[['triplet','Design against the triplet'],['doublet','Keep the doublet, accept the challenge']]},
+ {id:'footprint',title:'Rebalance the country footprint',line:'Timeline',lever:'geo',when:c=>c.H10>=0.62,trig:'H10 ≥ 62%',why:'Asian site competition now costs months; geography is a trade-off, not a default.',opts:[['global','Global incl. China'],['exchina','Ex-China'],['west','US + EU heavy']]},
+ {id:'access',title:'Choose the access evidence strategy',line:'Price & access',lever:'ep',when:c=>c.H9>=0.74,trig:'H9 ≥ 74%',why:'Premium needs OS or tolerability evidence in Germany and the UK; decide what we launch with.',opts:[['pfs','Launch on PFS with OS interim'],['os','Launch on OS']]},
+ {id:'dose',title:'Add the dose-optimization cohort',line:'Intervention',lever:'dose',when:c=>c.H4>=0.75&&!L.dose,trig:'H4 ≥ 75% while no dose cohort',why:'Regulators expect randomized dose data; the protocol currently lacks it.',opts:[[true,'Add a two-dose randomized cohort'],[false,'Keep a single dose, accept the risk']]},
+ {id:'panc',title:'Demote pancreatic to exploratory',line:'Population',lever:'panc',when:c=>c.H3<=0.45,trig:'H3 ≤ 45%',why:'Heterogeneous expression and an OS burden argue against a co-primary pancreatic cohort.',opts:[[false,'Exploratory only'],[true,'Keep the expansion cohort']]}
+];
+
+const base=()=>({cutoff:'75',comp:'triplet',ep:'pfs',geo:'global',dose:true,panc:false,bio:true});
+let L=base();let mc=null;
+const ASSETS=[{n:'ASP-C2',d:'CLDN18.2 ADC · Phase 2 ready · gastric / GEJ',on:true,mech:'CLDN18.2 antibody-drug conjugate',ind:'1L HER2-negative advanced gastric / GEJ',phase:'Phase 2 complete, pivotal design in progress',dec:'TPP / CDP strategy',gov:'Investment committee · 1 Dec 2026',owner:'Asset lead',H:null,DAYS:null,acc:{},locked:{},trials:true}];
+ASSETS[0].H=H;ASSETS[0].DAYS=DAYS;ASSETS[0].acc=acc;ASSETS[0].locked=locked;
+function activeAsset(){return ASSETS.find(a=>a.on)||ASSETS[0];}
+function switchAsset(i){ASSETS.forEach((a,j)=>a.on=j===i);const a=ASSETS[i];H=a.H;DAYS=a.DAYS;acc=a.acc;locked=a.locked;mc=null;renderAll();go('asset');}
+const WHO=[['MK','Asset lead','Decision workbench'],['RS','Clinical','Signals'],['AO','Access & pricing','Simulate · Price'],['JT','Operations','Positions']];
+
+
+/* =================== utils =================== */
+const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('on');clearTimeout(t._x);t._x=setTimeout(()=>t.classList.remove('on'),2400);}
+const hc=id=>(H.find(h=>h.id===id)||{conf:50}).conf/100;
+const fmtK=n=>n>=1000?(n/1000).toFixed(1)+'k':String(Math.round(n));
+let seed=7;const rnd=()=>{seed=(seed*16807)%2147483647;return(seed-1)/2147483646;};const gauss=()=>{let u=rnd()||1e-9,v=rnd();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);};
+const ymo=m=>`${Math.floor(m/12)}y ${m%12}m`;const pct=x=>Math.round(x*100);
+const agName=id=>(AGENTS.find(a=>a.id===id)||{n:id}).n;
+
+/* =================== navigation =================== */
+function go(v){$$('.tabs button').forEach(b=>b.classList.toggle('on',b.dataset.v===v));$$('#ws .view').forEach(s=>s.classList.toggle('on',s.id===v));window.scrollTo({top:0});}
+$$('.tabs button').forEach(b=>b.addEventListener('click',()=>go(b.dataset.v)));
+$('#roleSel').addEventListener('change',e=>{role=e.target.value;setModel(ROLES[role].model);renderAll();});
+function setModel(m){$$('#mtabs button').forEach(b=>b.classList.toggle('on',b.dataset.m===m));$$('.model').forEach(x=>x.classList.toggle('on',x.id==='m-'+m));}
+$$('#mtabs button').forEach(b=>b.addEventListener('click',()=>setModel(b.dataset.m)));
+function enter(){$('#landing').classList.add('off');$('#app').classList.add('on');window.scrollTo(0,0);}
+['enter1','enter2'].forEach(i=>$('#'+i).addEventListener('click',enter));
+$('#req').addEventListener('click',()=>toast('Request sent — the ZS team will set up your program workspace'));
+['share1','share2'].forEach(i=>$('#'+i).addEventListener('click',()=>{try{navigator.clipboard.writeText(location.href);}catch(e){}toast('Link copied — viewers see the same workspace, read-only');}));
+$('#toLanding').addEventListener('click',()=>{$('#app').classList.remove('on');$('#landing').classList.remove('off');window.scrollTo(0,0);});
+function showStudio(on){$('#studio').style.display=on?'':'none';$('#ws').style.display=on?'none':'';$('#navStudio').classList.toggle('on',on);$('#navWs').classList.toggle('on',!on);if(on)renderCatalog();}
+$('#navWs').addEventListener('click',()=>showStudio(false));$('#navStudio').addEventListener('click',()=>showStudio(true));
+$('#today').textContent=new Date().toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric'});
+
+/* =================== sidebar =================== */
+function renderSide(){
+  $('#assets').innerHTML=ASSETS.map((a,i)=>`<div class="asset ${a.on?'':'off'}" data-as="${i}"><b>${esc(a.n)}</b><span>${esc(a.d)}</span></div>`).join('');
+  $$('[data-as]').forEach(x=>x.addEventListener('click',()=>switchAsset(+x.dataset.as)));
+  $('#agN').textContent=AGENTS.length;bindInspectors();
+}
+$('#onboard').addEventListener('click',()=>openDrawer($('#onbForm')));
+$('#obCancel').addEventListener('click',closeDrawer);
+$('#obSave').addEventListener('click',()=>{const n=$('#obN').value.trim();if(!n){toast('Give the asset a name or code');return;}
+  const a={n,d:`${$('#obM').value.trim()||'Mechanism tbd'} · ${$('#obP').value} · ${$('#obI').value.trim()||'indication tbd'}`,on:false,mech:$('#obM').value.trim()||'Mechanism to be described',ind:$('#obI').value.trim()||'Indication to be described',phase:$('#obP').value,dec:$('#obD').value,gov:$('#obG').value.trim()||'Governance date to be set',owner:$('#obO').value,H:[],DAYS:[],acc:{},locked:{},trials:false};
+  ASSETS.push(a);['obN','obM','obI','obG'].forEach(i=>$('#'+i).value='');closeDrawer();switchAsset(ASSETS.length-1);toast(n+' onboarded — register the first hypothesis to start the agents');});
+
+/* =================== what's changed =================== */
+function appliedSigs(){return DAYS.flatMap(d=>d.sigs.map(s=>({...s,day:d.label}))).filter(s=>acc[s.id]===true);}
+function renderBrief(){
+  const R=ROLES[role];
+  const pending=DAYS.flatMap(d=>d.sigs).filter(s=>acc[s.id]===undefined&&(role==='da'||s.mv.some(([h])=>(H.find(x=>x.id===h)||{}).own===R.own)));
+  const mine=H.filter(h=>role==='da'||h.own===R.own),moved=mine.filter(h=>Math.abs(h.conf-h.start)>=8);
+  const fired=firedPatterns();const exposed=[...new Set(H.filter(h=>h.conf>=h.thr).map(h=>h.line))];
+  $('#brief').innerHTML=`<h1>What's changed</h1><p class="m" style="margin:6px 0 22px;max-width:62ch">${R.lede}</p><div class="todo">
+   <div class="it"><div><div class="t">Signals waiting for your review</div><div class="d">${pending.length?pending.filter(s=>s.hi).length+' high impact · each carries a proposed confidence move':'Nothing waiting. The next always-on cycle runs in 4 hours.'}</div></div><div class="rt"><span class="n ${pending.length?'a':''}">${pending.length}</span><button class="btn sm" data-go="sig">Review</button></div></div>
+   <div class="it"><div><div class="t">Hypotheses you own that moved</div><div class="d">${moved.length?moved.map(h=>h.id+' '+(h.conf-h.start>0?'+':'')+(h.conf-h.start)).join(' · '):'No material movement yet. Apply signals to see them move.'}</div></div><div class="rt"><span class="n">${moved.length}</span><button class="btn sm" data-go="wb">Open</button></div></div>
+   <div class="it"><div><div class="t">Decisions proposed from the evidence</div><div class="d">${fired.length?fired.map(p=>p.title).join(' · '):'None yet — patterns fire when hypotheses move in combination.'}</div></div><div class="rt"><span class="n ${fired.length?'a':''}">${fired.length}</span><button class="btn sm" data-go="hub">Workbench</button></div></div>
+   <div class="it"><div><div class="t">Positions reopened</div><div class="d">${exposed.length?exposed.join(', ')+' — a hypothesis crossed its threshold':'All six positions stand; none crossed a threshold.'}</div></div><div class="rt"><span class="n ${exposed.length?'a':''}">${exposed.length||6}</span><button class="btn sm" data-go="pos">${exposed.length?'Decide':'View'}</button></div></div></div>`;
+  $$('#brief [data-go]').forEach(b=>b.addEventListener('click',()=>go(b.dataset.go)));
+}
+
+/* =================== hypotheses =================== */
+function renderWB(){
+  const R=ROLES[role];const list=$('#wbList');list.innerHTML='';
+  if(!H.length){list.innerHTML='<div class="read" style="margin-top:0"><b>No hypotheses yet.</b> Register the first belief behind this program and attach the agents that should look for evidence.</div>';$('#nWb').textContent='';return;}
+  const groups=CATS.map(c=>({c,hs:H.filter(h=>h.cat===c)})).filter(g=>g.hs.length).sort((a,b)=>b.hs.some(h=>h.own===R.own)-a.hs.some(h=>h.own===R.own));
+  groups.forEach(g=>{const el=document.createElement('div');el.className='grp';el.innerHTML=`<h4>${g.c}</h4>`;
+    g.hs.slice().sort((a,b)=>(b.own===R.own)-(a.own===R.own)).forEach(h=>{
+      const d=h.conf-h.start,sup=h.trail.filter(x=>x.d>0).length,con=h.trail.filter(x=>x.d<0).length;const dim=role!=='da'&&h.own!==R.own;
+      const row=document.createElement('div');row.className='h'+(dim?' dim':'');
+      row.innerHTML=`<div class="tp" data-h="${h.id}" role="button" tabindex="0"><div><div class="st"><span>${h.id}</span>${esc(h.t)}</div><div class="meta"><span>${esc(h.own)}</span><span>·</span><span>${sup+con?sup+' for · '+con+' against':'no evidence yet'}</span><span>·</span>${h.agents.map(a=>`<span class="ag"><i></i>${esc(agName(a))}</span>`).join('')}${h.conf>=h.thr?'<span class="a">· threshold reached, '+esc(h.line)+' reopened</span>':''}</div></div>
+        <div class="cf"><div class="b"><i style="width:${h.conf}%"></i></div><b>${h.conf}</b></div><div class="mv ${d>0?'up':'z'}">${d?(d>0?'+':'')+d+' this week':'—'}</div></div>
+        <div class="det ${open[h.id]?'on':''}"><div><h4>Evidence trail</h4><div class="trail">${h.trail.slice().reverse().map(x=>`<div><span class="d ${x.d>0?'p':''}">${x.d>0?'+':''}${x.d||'set'}</span><span>${esc(x.s)} <span class="w">${esc(x.w)}</span></span></div>`).join('')}</div></div>
+        <div><h4>Threshold</h4><div class="thr"><span class="m s">Reopen ${esc(h.line)} at</span><input type="text" value="${h.thr}" data-thr="${h.id}"><span class="m s">% confidence</span></div><h4>What would change my mind</h4><p class="m">${esc(h.change)}</p><h4 style="margin-top:12px">Agents on this hypothesis</h4><div class="agon">${h.agents.length?h.agents.map(id=>{const a=AGENTS.find(x=>x.id===id);return a?`<div><span class="runner ${a.sup?'sup':''}"><i></i><i></i><i></i></span><b>${esc(a.n)}</b><span class="f">${a.cat==='event'?a.every:'every '+a.every} · ${esc(a.now)}</span></div>`:'';}).join(''):'<div class="f">No agents attached yet</div>'}</div><h4 style="margin-top:12px">Attach or detach</h4><div class="chips">${AGENTS.map(a=>`<button class="chip ${h.agents.includes(a.id)?'on':''}" data-att="${h.id}|${a.id}">${esc(a.n)}<small>${a.every}</small></button>`).join('')}</div></div></div>`;
+      el.appendChild(row);});
+    list.appendChild(el);});
+  $$('[data-h]').forEach(b=>{const t=()=>{open[b.dataset.h]=!open[b.dataset.h];renderWB();};b.addEventListener('click',e=>{if(e.target.closest('input,button,select'))return;t();});b.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();t();}});});
+  $$('[data-thr]').forEach(i=>i.addEventListener('change',()=>{const h=H.find(x=>x.id===i.dataset.thr);const v=parseInt(i.value);if(v>0&&v<100){h.thr=v;toast(h.id+' threshold set to '+v+'%');renderAll();}}));
+  $$('[data-att]').forEach(b=>b.addEventListener('click',()=>{const [hid,aid]=b.dataset.att.split('|');const h=H.find(x=>x.id===hid);const i=h.agents.indexOf(aid);if(i>-1)h.agents.splice(i,1);else h.agents.push(aid);renderWB();toast((i>-1?'Detached ':'Attached ')+agName(aid));}));
+  $('#nWb').textContent=H.length;
+}
+/* registration */
+const regAg=new Set();
+function renderRegChips(){$('#rA').innerHTML=AGENTS.map(a=>`<button class="chip ${regAg.has(a.id)?'on':''}" data-ra="${a.id}">${esc(a.n)}<small>${a.every}</small></button>`).join('');$$('[data-ra]').forEach(b=>b.addEventListener('click',()=>{regAg.has(b.dataset.ra)?regAg.delete(b.dataset.ra):regAg.add(b.dataset.ra);renderRegChips();}));}
+$('#openReg').addEventListener('click',()=>{openDrawer($('#reg'));renderRegChips();$('#rT').focus();});
+$('#regCancel').addEventListener('click',()=>{closeDrawer();$('#draft').classList.remove('on');});
+$('#draftAg').addEventListener('click',()=>$('#draft').classList.toggle('on'));
+$('#regSave').addEventListener('click',()=>{
+  const t=$('#rT').value.trim();if(!t){toast('Write the statement first');return;}
+  const agents=[...regAg];
+  if($('#draft').classList.contains('on')&&$('#dN').value.trim()){const id='a'+Date.now();AGENTS.push({id,n:$('#dN').value.trim(),cat:$('#dCat').value,k:$('#dK').value,every:{always:'6h',daily:'daily',event:'on event'}[$('#dCat').value],d:$('#dD').value.trim()||'Supervised agent.',now:'Scheduled for next cycle · supervised',sup:true});agents.push(id);}
+  const line=$('#rL').value.replace('&amp;','&');const cat=line==='Price & access'||line==='Timeline'?'Business':line;
+  H.push({id:'H'+(H.length+1),cat,t,own:$('#rO').value.replace('&amp;','&'),start:+$('#rC').value||50,conf:+$('#rC').value||50,thr:+$('#rTh').value||70,line,change:$('#rW').value.trim()||'Define the trigger with the owner.',agents,trail:[{d:0,s:'Registered by you',w:'today'}]});
+  closeDrawer();['rT','rW','dN','dD'].forEach(i=>$('#'+i).value='');regAg.clear();$('#draft').classList.remove('on');
+  toast('Hypothesis registered — '+agents.length+' agent'+(agents.length!==1?'s':'')+' attached');renderAll();
+});
+
+/* =================== signals =================== */
+function renderSig(){
+  const all=DAYS.flatMap(d=>d.sigs);$('#nSig').textContent=all.filter(s=>acc[s.id]===undefined).length;
+  if(!DAYS.length){$('#sigList').innerHTML='<div class="read" style="margin-top:0"><b>No signals yet.</b> Agents surface signals only when they touch a registered hypothesis.</div>';$('#mail').innerHTML='';$('#nSig').textContent='';return;}
+  $('#sigList').innerHTML=DAYS.map(d=>`<div class="dayh">${d.label}</div>`+d.sigs.map(s=>{const st=acc[s.id];
+    return `<div class="sg ${st!==undefined?'done':''}"><div><div class="src">${s.hi?'<span class="tag">High impact</span>':''}<span class="tag g"><span class="dot"></span>${esc(agName(s.ag))}</span><span>${esc(s.src)}</span></div><div class="t">${esc(s.t)}</div><div class="so">${esc(s.so)}</div><div class="mvs"><span class="f">Proposed</span>${s.mv.map(([h,dv])=>`<span>${h} <span class="d ${dv>0?'p':''}">${dv>0?'+':''}${dv}</span></span>`).join('')}${st===true?'<span class="tag">applied</span>':st===false?'<span class="tag g">dismissed</span>':''}</div></div>
+    <div class="acts">${st===undefined?`<button class="btn sm p" data-ap="${s.id}">Apply</button><button class="btn sm" data-dm="${s.id}">Dismiss</button>`:`<button class="btn sm t" data-un="${s.id}">Undo</button>`}</div></div>`;}).join('')).join('');
+  $$('[data-ap]').forEach(b=>b.addEventListener('click',()=>apply(b.dataset.ap,true)));$$('[data-dm]').forEach(b=>b.addEventListener('click',()=>apply(b.dataset.dm,false)));$$('[data-un]').forEach(b=>b.addEventListener('click',()=>undo(b.dataset.un)));
+  const today=DAYS[0];const moved=H.filter(h=>h.conf!==h.start).sort((a,b)=>Math.abs(b.conf-b.start)-Math.abs(a.conf-a.start)).slice(0,3);const fired=firedPatterns();
+  $('#mail').innerHTML=`<summary><span>Preview this morning's digest to the ${ROLES[role].own.toLowerCase()}</span><span>07:00 · ${today.label}</span></summary><div class="eb"><div class="subj">CLDN18.2 TPP — ${today.sigs.filter(s=>s.hi).length} high-impact signal, ${today.sigs.length} total${fired.length?', '+fired.length+' decision'+(fired.length>1?'s':'')+' proposed':''}</div><p class="m s">Always-on agents ran four cycles overnight. ${today.sigs.length} items touched a hypothesis you are tracking.</p><ul>${today.sigs.map(s=>`<li><b>${esc(s.t)}</b><br><span>${esc(s.so)}</span> <span class="f xs">${esc(agName(s.ag))} · proposed ${s.mv.map(([h,dv])=>h+' '+(dv>0?'+':'')+dv).join(', ')}</span></li>`).join('')}</ul>${moved.length?`<p class="s" style="margin-bottom:6px"><b>Where the thinking stands</b></p><ul>${moved.map(h=>`<li>${h.id} at <b>${h.conf}%</b> (${h.conf-h.start>0?'+':''}${h.conf-h.start} since kickoff)</li>`).join('')}</ul>`:''}${fired.length?`<p class="s"><b>Proposed decisions:</b> ${fired.map(p=>p.title).join('; ')}.</p>`:''}<button class="btn p sm" style="margin-top:8px" data-go="hub">Open the workbench</button></div>`;
+  $$('#mail [data-go]').forEach(b=>b.addEventListener('click',()=>go('hub')));
+}
+function find(id){for(const d of DAYS){const s=d.sigs.find(x=>x.id===id);if(s)return{s,d};}}
+function apply(id,yes){const {s,d}=find(id);acc[id]=yes;if(yes)s.mv.forEach(([hid,dv])=>{const h=H.find(x=>x.id===hid);const b=h.conf;h.conf=Math.max(5,Math.min(95,h.conf+dv));h.trail.push({d:dv,s:s.t,w:d.label.split(' ').slice(1).join(' ')});if(b<h.thr&&h.conf>=h.thr)toast(hid+' crossed its threshold — '+h.line+' reopened');});mc=null;renderAll();}
+function undo(id){const {s}=find(id);if(acc[id]===true)s.mv.forEach(([hid,dv])=>{const h=H.find(x=>x.id===hid);h.conf=Math.max(5,Math.min(95,h.conf-dv));const i=h.trail.map(x=>x.s).lastIndexOf(s.t);if(i>-1)h.trail.splice(i,1);});delete acc[id];mc=null;renderAll();}
+$('#applyAll').addEventListener('click',()=>{DAYS.flatMap(d=>d.sigs).forEach(s=>{if(acc[s.id]===undefined)apply(s.id,true);});});
+
+/* =================== models =================== */
+function params(){return{testing:0.40+0.45*hc('H2'),broad:hc('H1'),triplet:hc('H6'),compFirst:hc('H7'),payload:hc('H5'),premOS:hc('H9'),site:hc('H10'),dose:hc('H4'),panc:hc('H3')};}
+function model(Lx,p,noise){
+  const g=k=>noise?gauss()*k:0;const incident=92000,advanced=incident*0.62,her2=advanced*0.82;
+  const tested=her2*Math.min(0.95,Math.max(0.3,(Lx.geo==='west'?p.testing+0.03:p.testing)+g(0.05)));const prev={'75':0.38,'50':0.52,'1':0.72}[Lx.cutoff];const positive=tested*Math.max(0.2,prev+g(0.03));const treated=positive*0.78;
+  let share={'75':0.36,'50':0.31,'1':0.27}[Lx.cutoff]+(Lx.comp==='triplet'?0.05:-0.04)-p.compFirst*0.08+p.payload*0.06*(Lx.cutoff==='1'?1:0.3)+g(0.04);share=Math.max(0.08,Math.min(0.6,share));const onDrug=treated*share;const panc=Lx.panc?5200*Math.max(0,0.3+0.6*p.panc+g(0.1)):0;
+  const comp=[];let ptrs=0.30;comp.push(['Phase 3 base rate, CLDN18.2 ADC in 1L gastric',0.30]);const cut={'75':0.03,'50':0,'1':-0.06}[Lx.cutoff]+(Lx.cutoff==='1'?0.08*p.payload:0);comp.push(['Expression cutoff'+(Lx.cutoff==='1'?' (offset by payload independence, H5)':''),cut]);const ep=Lx.ep==='os'?-0.05:0;comp.push(['Primary endpoint '+Lx.ep.toUpperCase(),ep]);const cm=Lx.comp==='triplet'?-0.04+0.02*p.triplet:-0.09*p.triplet;comp.push([Lx.comp==='triplet'?'Triplet comparator, harder to beat':'Doublet comparator, acceptability risk (H6)',cm]);const ds=Lx.dose?0.04:-0.08*p.dose;comp.push([Lx.dose?'Dose-optimization cohort':'No dose cohort while expected (H4)',ds]);const pc=Lx.panc?-0.03:0;comp.push(['Pancreatic cohort',pc]);const bar=-Math.max(0,p.compFirst-0.5)*0.06;comp.push(['Bar reset by earlier competitor approval (H7)',bar]);ptrs=Math.max(0.05,Math.min(0.75,ptrs+cut+ep+cm+ds+pc+bar+g(0.04)));
+  const osEv=Lx.ep==='os'?1:0.35,tol=0.5+0.3*p.payload;const premOK=Math.min(1,osEv*0.7+tol*0.4+(1-p.premOS)*0.3);const ref=16800;const prem={'75':0.35,'50':0.22,'1':0.08}[Lx.cutoff]*premOK;const wac=ref*(1+prem)*(1+g(0.05));const gtn={'75':0.17,'50':0.21,'1':0.27}[Lx.cutoff];const net=wac*(1-gtn);const ira=Lx.bio?13:9;const eu=net*0.52*(Lx.ep==='os'?1:0.88),jp=net*0.46;const hta=Lx.ep==='os'?9:14;const gba=Lx.ep==='os'?'Considerable added benefit, likely':(tol>0.7?'Minor added benefit':'Non-quantifiable or hint');const nice=Lx.ep==='os'?'Within threshold at ~15% discount':'Above threshold; 25–35% PAS likely';
+  const countries=Lx.geo==='global'?[['United States',38,4],['EU5',30,3],['Japan',22,5],['Korea',18,6],['China',40,7]]:Lx.geo==='exchina'?[['United States',44,4],['EU5',34,3],['Japan',24,5],['Korea',18,6],['Brazil / Mexico',14,2]]:[['United States',52,4],['EU5',40,3],['Canada / Australia',12,2],['Japan',16,5],['Korea',10,6]];const n=Lx.cutoff==='1'?560:Lx.cutoff==='50'?620:680;const drag=countries.map(c=>c[2]>=5?1-0.35*p.site:1);const rb=Lx.cutoff==='1'?0.52:Lx.cutoff==='50'?0.44:0.36;const rate=countries.reduce((a,c,i)=>a+c[1]*rb*drag[i],0)*(1+g(0.08));const sf=Lx.cutoff==='1'?0.22:Lx.cutoff==='50'?0.38:0.55;let enroll=(Lx.geo==='global'?8:6)+n/Math.max(0.1,rate);if(Lx.panc)enroll+=5;if(Lx.dose)enroll+=4;const readout=Math.round(enroll+(Lx.ep==='os'?22:13));const cost=Math.round(n*0.21+(Lx.dose?36:0)+(Lx.panc?92:0)+(Lx.ep==='os'?42:0)+(Lx.geo==='west'?28:0));
+  const annual=net*12*0.72;const peak=(onDrug*0.47*annual+onDrug*0.33*eu*12*0.72+onDrug*0.20*jp*12*0.72)/1e9+panc*0.5*annual*0.8/1e9;const rnpv=Math.round((peak*0.55*(ira-(Lx.bio?0:1))*ptrs-cost/1000*1.1)*10)/10;
+  return{funnel:[['Incident gastric / GEJ',incident],['Advanced or metastatic',advanced],['HER2-negative',her2],['Tested for CLDN18.2',tested],['Positive at cutoff ≥'+Lx.cutoff+'%',positive],['Treated in 1L',treated],['On ASP-C2 at peak share',onDrug]],share,panc,ptrs,comp,price:{wac,net,gtn,eu,jp,hta,gba,nice,ira,prem,premOK},feas:{countries,drag,n,rate,sf,enroll,readout,cost},peak,rnpv};
+}
+function runMC(){const p=params();const N=500;const pk=[],rn=[],pt=[],rd=[];seed=11;for(let i=0;i<N;i++){const r=model(L,p,1);pk.push(r.peak);rn.push(r.rnpv);pt.push(r.ptrs);rd.push(r.feas.readout);}const q=(a,x)=>{const s=a.slice().sort((m,n)=>m-n);return s[Math.floor((s.length-1)*x)];};mc={pk,p10:q(pk,.1),p50:q(pk,.5),p90:q(pk,.9),r10:q(rn,.1),r50:q(rn,.5),r90:q(rn,.9),pt10:q(pt,.1),pt90:q(pt,.9),rd10:q(rd,.1),rd90:q(rd,.9),neg:rn.filter(x=>x<0).length/N};}
+const MODELS=[['Population & demand','Cutoff, footprint · H2 testing, H7 competitor-first, H5 payload','Funnel, patients on drug, share','Astellas forecast engine · stand-in today'],['Probability of success','Cutoff, endpoint, comparator, dose, pancreatic · H4, H6, H7','PTRS with listed increments','Vendor PTRS + design deltas · stand-in today'],['Price & access','Cutoff, endpoint, modality · H5, H9','Net price by market, GTN, HTA rating, time to reimbursement, negotiation year','Pricing archetype tables · stand-in today'],['Feasibility','Cutoff, footprint, dose, pancreatic, endpoint · H10','Enrollment months, readout, screen failure, cost','Astellas feasibility model · stand-in today'],['Business case','All of the above','Peak, rNPV, scenario spread','Finance pro-forma · stand-in today']];
+function renderSim(){
+  $$('#levers select').forEach(s=>s.value=L[s.dataset.k]);$$('#levers .tg').forEach(b=>b.classList.toggle('on',!!L[b.dataset.k]));
+  const p=params();const r=model(L,p,0);if(!mc)runMC();const mx=r.funnel[0][1];
+  $('#m-pop').innerHTML=`<div class="k"><div><div class="l">Patients on ASP-C2 at peak</div><div class="v a">${fmtK(r.funnel[6][1])}</div><div class="r">US + EU5 + JP, 1L${L.panc?' · +'+fmtK(r.panc)+' pancreatic':''}</div></div><div><div class="l">Peak share of treated 1L</div><div class="v">${pct(r.share)}%</div><div class="r">net of H7</div></div><div><div class="l">Testing rate assumed</div><div class="v">${pct(p.testing)}%</div><div class="r">from H2 confidence</div></div><div><div class="l">Peak sales, P50</div><div class="v">$${mc.p50.toFixed(1)}B</div><div class="r">P10 $${mc.p10.toFixed(1)}B · P90 $${mc.p90.toFixed(1)}B</div></div></div><div class="fun">${r.funnel.map(f=>`<div class="fr"><div>${f[0]}</div><div class="b"><i style="width:${f[1]/mx*100}%"></i></div><div class="n">${fmtK(f[1])}</div></div>`).join('')}</div><div class="read"><b>Reading this.</b> The ≥1% cutoff roughly doubles the positive pool, but share falls because the differentiation story weakens — unless H5 holds.</div>`;
+  $('#m-ptrs').innerHTML=`<div class="k"><div><div class="l">Probability of success</div><div class="v a">${pct(r.ptrs)}%</div><div class="r">${pct(mc.pt10)}–${pct(mc.pt90)}% across scenarios</div></div><div><div class="l">Sample size</div><div class="v">${r.feas.n}</div><div class="r">HR 0.65, 85% power</div></div><div><div class="l">Efficacy bar (H8)</div><div class="v">HR ≤0.65</div><div class="r">target ≤0.55</div></div><div><div class="l">Regulatory posture</div><div class="v">${L.dose?'Aligned':'Exposed'}</div><div class="r">${L.dose?'dose cohort included':'no dose cohort · H4 '+pct(p.dose)+'%'}</div></div></div><div class="two"><div><h3 style="margin-bottom:6px">Build-up</h3><div class="comp">${r.comp.map(c=>`<div><span>${esc(c[0])}</span><span class="v ${c[1]>0?'p':''}">${c[1]>0?'+':''}${pct(c[1])}</span></div>`).join('')}<div class="tot"><span>Total</span><span class="v">${pct(r.ptrs)}%</span></div></div></div><div><h3 style="margin-bottom:6px">What moves it most</h3><p class="m s">Comparator and cutoff are the largest levers. The doublet looks easier to beat but carries an acceptability penalty that grows with H6 — at ${pct(p.triplet)}% it costs ${Math.round(9*p.triplet)} points.</p></div></div>`;
+  const pr=r.price;$('#m-price').innerHTML=`<div class="k"><div><div class="l">US net price, monthly</div><div class="v a">$${Math.round(pr.net).toLocaleString()}</div><div class="r">WAC $${Math.round(pr.wac).toLocaleString()} · GTN ${pct(pr.gtn)}%</div></div><div><div class="l">Premium vs reference</div><div class="v">${pct(pr.prem)}%</div><div class="r">${pct(pr.premOK)}% defensible</div></div><div><div class="l">EU reimbursement</div><div class="v">${pr.hta} mo</div><div class="r">JCA then national</div></div><div><div class="l">Medicare negotiation</div><div class="v">${2030+pr.ira}</div><div class="r">${L.bio?'biologic, 13 years':'small molecule, 9 years'}</div></div></div><div class="mk"><div><h3>United States</h3><div class="kv"><span>Net monthly</span><b>$${Math.round(pr.net).toLocaleString()}</b></div><div class="kv"><span>Payer stance</span><b>${L.cutoff==='1'?'Step edits likely':'Open access likely'}</b></div><div class="kv"><span>Evidence</span><b>${L.ep==='os'?'OS primary':'PFS only'}</b></div></div><div><h3>Germany</h3><div class="kv"><span>Net monthly</span><b>€${Math.round(pr.eu*0.92).toLocaleString()}</b></div><div class="kv"><span>G-BA</span><b>${pr.gba}</b></div><div class="kv"><span>NICE</span><b>${pr.nice}</b></div></div><div><h3>Japan</h3><div class="kv"><span>Net monthly</span><b>¥${Math.round(pr.jp*150).toLocaleString()}</b></div><div class="kv"><span>Route</span><b>${L.cutoff==='75'?'Usefulness premium':'Similar-efficacy'}</b></div><div class="kv"><span>CEA comparator</span><b>${L.comp==='triplet'?'Triplet, favourable':'Doublet, challenged'}</b></div></div></div><div class="read"><b>Access read.</b> ${L.ep==='os'?'An OS primary earns the premium in all three markets; the trade is ~9 months and lower PTRS.':'With PFS only, H9 at '+pct(p.premOS)+'% says the premium will be contested in Germany and the UK.'}</div>`;
+  const f=r.feas,dsum=f.drag.reduce((a,b)=>a+b,0);$('#m-feas').innerHTML=`<div class="k"><div><div class="l">Enrollment</div><div class="v a">${Math.round(f.enroll)} mo</div><div class="r">incl. activation</div></div><div><div class="l">Primary readout</div><div class="v">${ymo(f.readout)}</div><div class="r">${mc.rd10}–${mc.rd90} months</div></div><div><div class="l">Screen failure</div><div class="v">${pct(f.sf)}%</div><div class="r">cutoff ≥${L.cutoff}%</div></div><div><div class="l">Program cost</div><div class="v">$${f.cost}M</div><div class="r">pivotal only</div></div></div><table><thead><tr><th>Country</th><th class="n">Sites</th><th class="n">Competing trials</th><th class="n">Pts / site / month</th><th class="n">Drag</th></tr></thead><tbody>${f.countries.map((c,i)=>`<tr><td>${c[0]}</td><td class="n">${c[1]}</td><td class="n">${c[2]}</td><td class="n">${(f.rate/f.countries.reduce((a,x)=>a+x[1],0)*f.drag[i]/dsum*f.drag.length).toFixed(2)}</td><td class="n">${f.drag[i]<1?'−'+Math.round((1-f.drag[i])*100)+'%':'—'}</td></tr>`).join('')}</tbody></table><div class="read"><b>Feasibility read.</b> H10 at ${pct(p.site)}% applies a ${Math.round(35*p.site)}% drag to Japan, Korea and China.</div>`;
+  const bins=28,mn=Math.min(...mc.pk),mxp=Math.max(...mc.pk),hist=new Array(bins).fill(0);mc.pk.forEach(v=>hist[Math.min(bins-1,Math.floor((v-mn)/(mxp-mn+1e-9)*bins))]++);const hm=Math.max(...hist);const medBin=Math.floor((mc.p50-mn)/(mxp-mn+1e-9)*bins);
+  $('#m-bc').innerHTML=`<div class="k"><div><div class="l">Risk-adjusted NPV, P50</div><div class="v a">$${mc.r50.toFixed(1)}B</div><div class="r">P10 $${mc.r10.toFixed(1)}B · P90 $${mc.r90.toFixed(1)}B</div></div><div><div class="l">Peak sales, P50</div><div class="v">$${mc.p50.toFixed(1)}B</div><div class="r">risk-unadjusted</div></div><div><div class="l">PTRS</div><div class="v">${pct(r.ptrs)}%</div><div class="r">from the PTRS model</div></div><div><div class="l">Scenarios below zero</div><div class="v">${pct(mc.neg)}%</div><div class="r">no-go pressure</div></div></div><h3>Peak sales across ${mc.pk.length} scenarios</h3><div class="hist">${hist.map((h,i)=>`<i class="${i===medBin?'med':i>=bins*0.1&&i<=bins*0.9?'mid':''}" style="height:${h/hm*100}%"></i>`).join('')}</div><div class="axis"><span>$${mn.toFixed(1)}B</span><span>P50 $${mc.p50.toFixed(1)}B</span><span>$${mxp.toFixed(1)}B</span></div><div class="read"><b>What narrows this.</b> H2 and H7 contribute most of the spread; evidence on those tightens the committee's range more than more modelling would.</div>`;
+  $('#modelRows').innerHTML=`<div class="row" style="border-bottom:1px solid var(--line);color:var(--ink-3);font-size:12px"><span>Model</span><span>Reads</span><span>Returns</span><span class="st">Engine</span></div>`+MODELS.map(m=>`<div class="row"><b>${m[0]}</b><span>${m[1]}</span><span>${m[2]}</span><span class="st">${m[3]}</span></div>`).join('');
+}
+$$('#levers select').forEach(s=>s.addEventListener('change',()=>{L[s.dataset.k]=s.value;mc=null;renderSim();renderPos();renderHub();}));
+$$('#levers .tg').forEach(b=>b.addEventListener('click',()=>{L[b.dataset.k]=!L[b.dataset.k];mc=null;renderSim();renderPos();renderHub();}));
+$('#reset').addEventListener('click',()=>{L=base();mc=null;renderSim();renderPos();renderHub();});
+
+/* =================== workbench =================== */
+function confMap(){const c={};H.forEach(h=>c[h.id]=h.conf/100);return c;}
+function firedPatterns(){const c=confMap();return PATTERNS.filter(p=>p.when(c));}
+function renderHub(){
+  const c=confMap();const fired=firedPatterns();const applied=appliedSigs();const p=params();
+  $('#nDec').textContent=fired.length||'';
+  $('#hubLede').textContent=fired.length?`${fired.length} decision${fired.length>1?'s':''} proposed from ${applied.length} applied signal${applied.length!==1?'s':''}. Each shows the trigger that fired, the evidence chain, and the options priced with today's confidences.`:'No decisions proposed yet. Patterns fire when hypotheses move in combination — apply this week\u2019s signals to see them.';
+  $('#decItems').innerHTML=fired.map(pt=>{
+    const hyps=H.filter(h=>pt.trig.includes(h.id));const sigs=applied.filter(s=>s.mv.some(([h])=>hyps.some(x=>x.id===h)));const exposed=hyps.some(h=>h.conf>=h.thr);
+    const rows=pt.opts.map(([v,label])=>{const Lx={...L,[pt.lever]:v};const r=model(Lx,p,0);return{v,label,r,cur:String(L[pt.lever])===String(v)};});
+    const agents={};sigs.forEach(s=>{agents[s.ag]=(agents[s.ag]||0)+1;});
+    return `<div class="di"><div class="dh"><div><div class="ln">${pt.line} · proposed</div><h3>${pt.title}</h3><div class="ev">${sigs.length} signal${sigs.length!==1?'s':''} · ${hyps.map(h=>h.id+' '+h.conf+'%').join(' · ')}${exposed?' · threshold crossed':''}</div></div><div class="stat"><b>${Math.round(hyps.reduce((a,h)=>a+h.conf,0)/hyps.length)}%</b>position confidence</div></div>
+    <div class="q"><b>${exposed?'Decision to take:':'Decision to frame:'}</b> ${esc(pt.why)}</div>
+    <div class="trg"><b>Trigger fired:</b> ${pt.trig} — from each hypothesis's "what would change my mind".</div>
+    <div class="chain"><div><h4>Evidence chain</h4><div class="evl">${sigs.map(s=>`<div><span>${esc(s.t)}<small>${esc(agName(s.ag))} · ${esc(s.src)} · ${s.day}</small></span><span class="mm">${s.mv.filter(([h])=>hyps.some(x=>x.id===h)).map(([h,dv])=>h+' '+(dv>0?'+':'')+dv).join(', ')}</span></div>`).join('')||'<div><span class="f">Triggered by threshold edits rather than signals</span></div>'}</div></div>
+    <div><h4>How it got here</h4><div class="agl">${Object.entries(agents).map(([a,n])=>`<div><b>${esc(agName(a))}</b><span>${n} signal${n>1?'s':''} surfaced</span></div>`).join('')}<div><b>Implication agent</b><span>proposed the moves and fired this pattern</span></div><div><b>Simulation agent</b><span>priced the options below</span></div><div><b>Guardrail agent</b><span>every signal cited with source and date</span></div></div></div></div>
+    <div class="opts"><h4>Options, simulated with today's confidences</h4><table><thead><tr><th>Option</th><th class="n">Patients</th><th class="n">PTRS</th><th class="n">Peak</th><th class="n">Readout</th><th class="n">US net / mo</th><th></th></tr></thead><tbody>${rows.map(o=>`<tr class="${o.cur?'cur':''}"><td class="o">${o.label}${o.cur?' <span class="tag g">current</span>':''}</td><td class="n">${fmtK(o.r.funnel[6][1])}</td><td class="n">${pct(o.r.ptrs)}%</td><td class="n">$${o.r.peak.toFixed(1)}B</td><td class="n">${ymo(o.r.feas.readout)}</td><td class="n">$${Math.round(o.r.price.net).toLocaleString()}</td><td class="n"><button class="btn sm" data-lv="${pt.lever}" data-val="${o.v}">Explore</button></td></tr>`).join('')}</tbody></table></div>
+    <div class="acts"><button class="btn sm p" data-go="pos">Take to positions</button><button class="btn sm" data-go="sim">Open full simulation</button></div></div>`;}).join('');
+  const notFired=PATTERNS.filter(p=>!p.when(c));
+  $('#near').innerHTML=`<h4>Patterns not yet fired</h4>`+notFired.map(p=>`<div><span><b>${p.title}</b> · ${p.line}</span><span>fires at ${p.trig}</span></div>`).join('');
+  $$('#hub [data-lv]').forEach(b=>b.addEventListener('click',()=>{let v=b.dataset.val;if(v==='true')v=true;else if(v==='false')v=false;L[b.dataset.lv]=v;mc=null;renderSim();renderPos();go('sim');toast('Levers set — exploring this option');}));
+  $$('#hub [data-go]').forEach(b=>b.addEventListener('click',()=>go(b.dataset.go)));
+}
+
+/* =================== positions =================== */
+function renderPos(){
+  const p=params();const r=model(L,p,0);if(!mc)runMC();
+  const avg=ids=>Math.round(ids.reduce((a,i)=>a+(H.find(h=>h.id===i)||{conf:50}).conf,0)/ids.length);const exposed=line=>H.some(h=>h.line===line&&h.conf>=h.thr);
+  const P=[
+   {line:'Population',owner:'Asset lead',contrib:'Forecasting',hyps:['H1','H2','H3'],st:`CLDN18.2 ${L.cutoff==='1'?'any expression (≥1%)':'≥'+L.cutoff+'% moderate-to-strong'}, HER2-negative, 1L advanced gastric or GEJ${L.panc?'; pancreatic as exploratory cohort':''}.`,why:`${fmtK(r.funnel[4][1])} positive patients at this cutoff with testing at ${pct(p.testing)}%.`},
+   {line:'Intervention',owner:'Clinical',contrib:'Asset lead',hyps:['H4','H5'],st:`ASP-C2 at the dose selected from a ${L.dose?'randomized two-dose cohort':'single Phase 2 dose'}, every 3 weeks IV, with chemo + PD-1.`,why:`${L.dose?'Meets the H4 expectation.':'Exposed: H4 says a dose cohort will be asked for.'} Differentiation rests on H5.`},
+   {line:'Comparator',owner:'Clinical',contrib:'Asset lead, Access',hyps:['H6','H7'],st:L.comp==='triplet'?'Chemo + PD-1 + zolbetuximab in CLDN18.2-high; chemo + PD-1 in the remainder.':'Chemo + PD-1 across the population.',why:`Triplet is ${Math.round(31+13*hc('H6'))}% of US 1L starts and higher in Japan.`},
+   {line:'Outcomes',owner:'Clinical',contrib:'Access',hyps:['H8'],st:`Primary ${L.ep.toUpperCase()}; target HR ≤0.55, minimum acceptable HR 0.65${L.ep==='pfs'?'; OS key secondary with interim':''}.`,why:`${L.ep==='os'?'OS primary adds ~9 months and secures the premium.':'PFS keeps readout at '+ymo(r.feas.readout)+'; the access case leans on OS secondary and tolerability.'}`},
+   {line:'Price & access',owner:'Access & pricing',contrib:'Forecasting',hyps:['H9'],st:`US net ~$${Math.round(r.price.net/100)*100}/month, ${pct(r.price.prem)}% premium; EU via JCA with ${L.ep==='os'?'added-benefit':'tolerability-led'} dossier; Japan ${L.cutoff==='75'?'with usefulness premium':'similar-efficacy'}.`,why:`${pct(r.price.premOK)}% of the asked premium is defensible with H9 at ${pct(hc('H9'))}%.`},
+   {line:'Timeline',owner:'Operations',contrib:'Clinical',hyps:['H10'],st:`Primary readout ${ymo(r.feas.readout)} from first patient; ${L.geo==='global'?'global footprint incl. China':L.geo==='exchina'?'ex-China footprint':'US/EU-weighted footprint'}; cost ~$${r.feas.cost}M.`,why:`H10 at ${pct(hc('H10'))}% applies a ${Math.round(35*hc('H10'))}% drag to Asian sites.`}];
+  $('#posList').innerHTML=P.map(x=>{const c=avg(x.hyps),ex=exposed(x.line),lk=locked[x.line]&&!ex;
+    return `<div class="p ${lk?'lk':''}"><div class="lab">${x.line}<span>${x.hyps.join(', ')}</span></div><div><div>${esc(x.st)}</div><div class="why">${esc(x.why)}</div><div class="owns">Owner <b>${x.owner}</b> · contributors <b>${x.contrib}</b> · rests on ${x.hyps.map(h=>{const y=H.find(z=>z.id===h);return y?h+' ('+y.own+')':h+' (not registered)';}).join(', ')}</div>${ex?'<div class="flag"><b>Reopened.</b> A hypothesis behind this line crossed its threshold since it was last agreed.</div>':''}</div>
+    <div class="side2"><div class="c">${c}%<span>confidence</span></div>${lk?'<span class="tag">Locked</span><button class="btn sm t" data-ul="'+x.line+'">Unlock</button>':'<span class="tag g">'+(ex?'Reopened':'Provisional')+'</span><button class="btn sm '+(ex?'p':'')+'" data-lk="'+x.line+'">'+(ex?'Review and lock':'Lock')+'</button>'}</div></div>`;}).join('');
+  $$('[data-lk]').forEach(b=>b.addEventListener('click',()=>{locked[b.dataset.lk]=true;toast(b.dataset.lk+' locked and versioned');renderPos();renderBrief();}));
+  $$('[data-ul]').forEach(b=>b.addEventListener('click',()=>{delete locked[b.dataset.ul];renderPos();renderBrief();}));
+  $('#nPos').textContent=Object.keys(locked).filter(k=>!exposed(k)).length+'/6';
+}
+$('#export').addEventListener('click',()=>toast('TPP v0.5 exported with evidence trail and scenario ranges'));
+
+/* =================== agent studio =================== */
+function renderCatalog(){
+  $('#catalog').innerHTML=['always','daily','event'].map(cat=>{const as=AGENTS.filter(a=>a.cat===cat);if(!as.length)return '';
+    return `<div class="cg"><h5>${CATN[cat][0]}<span>${cat==='always'?'every 6h':cat==='daily'?'once a day':'on trigger'} · ${as.length}</span></h5>${as.map(a=>{const attached=H.filter(h=>h.agents.includes(a.id)).map(h=>h.id);
+      return `<div class="agent ${a.sup?'':'scan'}" data-insp="${a.id}"><div class="ah"><span>${esc(a.n)}</span><span class="stt"><span class="runner ${a.sup?'sup':''}"><i></i><i></i><i></i></span>${a.sup?'supervised':'running'}</span></div><p>${esc(a.d)}</p><div class="ft2"><span style="color:var(--ink-2)">Reads ${KN[a.k]} · attached to ${attached.length?attached.join(', '):'none'}</span><span>${cat==='event'?a.every:'every '+a.every}</span></div></div>`;}).join('')}</div>`;}).join('');
+  $$('[data-cad]').forEach(s=>s.addEventListener('change',()=>{const a=AGENTS.find(x=>x.id===s.dataset.cad);a.every=s.value;toast(a.n+' now refreshes every '+s.value);renderCatalog();}));
+  $$('[data-run]').forEach(b=>b.addEventListener('click',()=>{const a=AGENTS.find(x=>x.id===b.dataset.run);pushLog(['Guardrail',a.n+' manual run requested · queued · results require review'],true);toast(a.n+' queued');}));
+  $('#agN').textContent=AGENTS.length;
+}
+$('#newAg').addEventListener('click',()=>{openDrawer($('#agForm'));$('#aH').innerHTML=H.map(h=>`<button class="chip" data-ah="${h.id}">${h.id}</button>`).join('');$$('[data-ah]').forEach(b=>b.addEventListener('click',()=>b.classList.toggle('on')));$('#aN').focus();});
+$('#aCancel').addEventListener('click',closeDrawer);
+$('#aSave').addEventListener('click',()=>{const n=$('#aN').value.trim();if(!n){toast('Give the agent a name');return;}const id='a'+Date.now();const cat=$('#aCat').value;AGENTS.push({id,n,cat,k:$('#aK').value,every:{always:'6h',daily:'daily',event:'on event'}[cat],d:$('#aD').value.trim()||'Supervised agent.',now:'Scheduled for next cycle · supervised',sup:true});$$('#aH .chip.on').forEach(c=>H.find(h=>h.id===c.dataset.ah).agents.push(id));closeDrawer();$('#aN').value='';$('#aD').value='';pushLog(['Guardrail',n+' registered · supervised · proposals require review'],true);toast(n+' created');renderCatalog();renderWB();});
+const LOGSEED=[['Registry watch','Phase 3 start detected · CLDN18.2 ADC · cutoff ≥1% · routed to Implication'],['Implication agent','Proposed H1 +8, H7 +6 · weight 0.9 · awaiting asset lead'],['Institutional memory','Ad board 14 Oct synthesized · pancreatic heterogeneity · medical lead validated'],['Simulation agent','Re-ran business case · P50 peak +$0.2B after H2 update'],['Guardrail agent','Blocked claim from call summary: no retrievable source'],['Congress & literature','ESMO LBA-14 efficacy table extracted by expression subgroup'],['Implication agent','Pattern "Broaden the label population" armed · H1 65%, H2 60% needed'],['Portfolio memory','2023 forecast assumed 60% testing, actual 40% · haircut proposed'],['Regulatory & HTA watch','G-BA resolution parsed · routed to H9'],['Guardrail agent','Audit log sealed for 20 Oct · 14 events · 0 unresolved']];
+let logi=0;const times=['06:12','06:14','06:19','06:21','06:30','06:41','06:43','06:52','06:58','07:00'];
+function pushLog(e,fresh){const t=e?'now':times[logi%times.length];e=e||LOGSEED[logi%LOGSEED.length];if(!fresh)logi++;const d=document.createElement('div');if(fresh)d.className='new';d.innerHTML=`<span class="ts">${t}</span><span class="ag">${esc(e[0])}</span><span>${esc(e[1])}</span>`;const l=$('#alog');l.prepend(d);while(l.children.length>14)l.lastChild.remove();}
+for(let i=0;i<8;i++)pushLog();
+setInterval(()=>{if($('#studio').style.display!=='none'&&$('#app').classList.contains('on'))pushLog(null,true);},3600);
+
+
+/* =================== asset context =================== */
+function renderAssetHead(){const a=activeAsset();$('#crumb').innerHTML=`Decision workspace <span>/</span> ${esc(a.n)}`;$('#aEye').textContent=`Decision workspace / ${a.n}`;$('#aTitle').textContent=a.n;$('#aSub').textContent=`${a.mech} · ${a.ind} · ${a.phase} · ${a.dec}`;
+  const demo=a.trials;const scope=H.length?`${H.length} hypotheses · ${AGENTS.length} agents in the catalog · ${new Set(H.flatMap(h=>h.agents)).size} attached`:'No hypotheses registered yet — this is the first step';
+  $('#briefRows').innerHTML=(demo?`<div class="brow"><div><b>Target population</b><span>CLDN18.2-positive, HER2-negative advanced gastric or GEJ adenocarcinoma, first line, with chemotherapy and PD-1</span></div><span class="tag g">Illustrative</span></div><div class="brow"><div><b>Mechanism</b><span>Anti-CLDN18.2 ADC, topoisomerase-inhibitor payload; translational data suggest activity independent of expression (H5)</span></div></div><div class="brow"><div><b>Where the program stands</b><span>Phase 2 read out; pivotal design goes to the investment committee on 1 Dec 2026</span></div><a data-go="pos">View positions →</a></div><div class="brow"><div><b>What the pivotal must show</b><span>PFS HR ≤0.65 against the real-world control with a positive OS trend; grade ≥3 GI toxicity below the class (H8)</span></div><a data-go="sim">Simulate →</a></div>`
+  :`<div class="brow"><div><b>Target population</b><span>${esc(a.ind)}</span></div><span class="tag g">To confirm</span></div><div class="brow"><div><b>Mechanism</b><span>${esc(a.mech)}</span></div></div><div class="brow"><div><b>Where the program stands</b><span>${esc(a.phase)} · ${esc(a.gov)} · owner ${esc(a.owner)}</span></div></div><div class="brow"><div><b>What the program must show</b><span>Not yet defined — register outcome hypotheses to set the bar</span></div><a data-go="wb">Register →</a></div>`)
+  +`<div class="brow"><div><b>Monitoring scope</b><span>${scope}</span></div><a data-go="wb">View hypotheses →</a></div>`;}
+
+const TRIALS=[
+ {n:'ASP-C2 pivotal (planned)',who:'Astellas',ours:true,ph:'Phase 3',line:'1L G/GEJ',s:2027.3,e:2030.2,pop:'CLDN18.2+ HER2− · cutoff per TPP',n:'~560–680',ep:'PFS (OS key secondary)',goal:'Beat the real-world control with HR ≤0.65 and a tolerability advantage',rel:'This decision'},
+ {n:'Zolbetuximab + chemo (approved)',who:'Astellas · Vyloy',appr:true,ph:'Approved 2024',line:'1L G/GEJ',s:2025,e:2031,pop:'CLDN18.2 ≥75% moderate-to-strong',n:'—',ep:'PFS / OS (SPOTLIGHT, GLOW)',goal:'Current CLDN18.2 standard; defines today\u2019s label population',rel:'Sets the ≥75% precedent and the triplet comparator'},
+ {n:'Sponsor A ADC',who:'Competitor',ph:'Phase 3',line:'1L G/GEJ',s:2026.8,e:2029.6,pop:'CLDN18.2 ≥1% (broad)',n:'~650',ep:'PFS, OS',goal:'Broad-expression label ahead of us',rel:'Drives H1 and H7 · the bar at our readout'},
+ {n:'Sponsor A ADC',who:'Competitor',ph:'Phase 2',line:'2L+ G/GEJ',s:2025.5,e:2027.2,pop:'CLDN18.2 any expression',n:'~180',ep:'ORR, DoR',goal:'Efficacy across expression levels',rel:'ESMO 2026 readout moved H1 +8, H5 −7'},
+ {n:'Sponsor C ADC',who:'Competitor',ph:'Phase 2',line:'Pancreatic, 2L',s:2025.8,e:2027.8,pop:'CLDN18.2+ PDAC',n:'~120',ep:'ORR, PFS',goal:'First CLDN18.2 activity in pancreatic',rel:'Interim ORR 24% · bears on H3'},
+ {n:'Sponsor B bispecific',who:'Competitor',ph:'Phase 1/2',line:'2L+ G/GEJ',s:2026.2,e:2028.5,pop:'CLDN18.2+ post-zolbetuximab allowed',n:'~90',ep:'Safety, ORR',goal:'CLDN18.2 × CD3 activity after anti-CLDN18.2 therapy',rel:'Later-line; tests whether the target survives prior therapy'},
+ {n:'Sponsor D ADC',who:'Competitor',ph:'Phase 3',line:'1L G/GEJ, Asia',s:2026.5,e:2029.0,pop:'CLDN18.2 ≥40%',n:'~500',ep:'PFS',goal:'Asia-first label',rel:'Competes for KR/JP/CN sites · drives H10'}
+];
+const Y0=2025,Y1=2032;
+let tipEl=null;
+function renderAsset(){
+  renderAssetHead();
+  const fired=firedPatterns();const pend=DAYS.flatMap(d=>d.sigs).filter(s=>acc[s.id]===undefined&&s.hi)[0];
+  $('#focus').innerHTML=fired.length?`<span class="kick">Proposed decision</span><b>${esc(fired[0].title)}?</b><p>${esc(fired[0].why)}</p><div class="choices">${fired[0].opts.map(o=>`<span class="tag g">${esc(o[1])}</span>`).join('')}</div><a data-go="hub">Open proposed decision →</a>`:pend?`<b>Should the team act on: ${esc(pend.t)}?</b><p>${esc(pend.so)} The evidence is not yet at a threshold; review the signal and the hypotheses it moves before framing a decision.</p><a data-go="sig">Review the signal →</a>`:`<b>No open decision today.</b><p>All six positions stand and no pattern has fired. The always-on agents run their next cycle in 4 hours.</p><a data-go="pos">View positions →</a>`;
+  if(!activeAsset().trials){$('#gantt').innerHTML='<div class="read" style="margin-top:0"><b>No trials mapped yet.</b> Registry watch populates this view within one cycle of the first hypothesis being registered.</div>';$('#tdet').classList.remove('on');$('#pools').innerHTML='<div class="pc" style="grid-column:1/-1"><span>Patient pools appear once the population hypotheses and the demand model are configured.</span></div>';$$('#asset [data-go]').forEach(a=>a.addEventListener('click',()=>go(a.dataset.go)));return;}
+  const yrs=[];for(let y=Y0;y<Y1;y++)yrs.push(y);
+  const nowX=((2026.8-Y0)/(Y1-Y0))*100;
+  $('#gantt').innerHTML=`<div class="yrs"><span></span><div class="ax">${yrs.map(y=>`<span>${y}</span>`).join('')}</div></div>`+TRIALS.map((t,i)=>{const l=((t.s-Y0)/(Y1-Y0))*100,w=((t.e-t.s)/(Y1-Y0))*100;
+    return `<div class="row"><div class="lab"><b>${esc(t.n)}</b><span>${esc(t.who)} · ${esc(t.ph)} · ${esc(t.line)}</span></div><div class="lane"><span class="now" style="left:${nowX}%"></span><div class="bar ${t.ours?'ours':''} ${t.appr?'appr':''}" style="left:${l}%;width:${w}%" data-t="${i}" tabindex="0">${esc(t.pop)}<span class="ro"></span></div></div></div>`;}).join('');
+  $$('[data-t]').forEach(b=>{const t=TRIALS[+b.dataset.t];
+    const show=e=>{if(!tipEl){tipEl=document.createElement('div');tipEl.className='tip';document.body.appendChild(tipEl);}tipEl.innerHTML=`<b>${esc(t.n)}</b>${esc(t.ph)} · ${esc(t.line)} · n ${esc(t.n2||t.n)}<br><span>Primary completion ~${Math.floor(t.e)} Q${Math.floor((t.e%1)*4)+1} · ${esc(t.ep)}</span><br><span>${esc(t.rel)}</span>`;tipEl.classList.add('on');move(e);};
+    const move=e=>{if(!tipEl)return;const x=Math.min(window.innerWidth-320,(e.clientX||0)+14),y=(e.clientY||0)+16;tipEl.style.left=x+'px';tipEl.style.top=y+'px';};
+    const hide=()=>tipEl&&tipEl.classList.remove('on');
+    b.addEventListener('mouseenter',show);b.addEventListener('mousemove',move);b.addEventListener('mouseleave',hide);b.addEventListener('focus',e=>{const r=b.getBoundingClientRect();show({clientX:r.left,clientY:r.bottom});});b.addEventListener('blur',hide);
+    b.addEventListener('click',()=>{const d=$('#tdet');d.classList.add('on');d.innerHTML=`<div><b>Trial</b><span>${esc(t.n)} · ${esc(t.who)}</span></div><div><b>Population</b><span>${esc(t.pop)} · n ${esc(t.n)}</span></div><div><b>Endpoints</b><span>${esc(t.ep)}</span></div><div><b>Expected primary completion</b><span>~${Math.floor(t.e)} Q${Math.floor((t.e%1)*4)+1}</span></div><div style="grid-column:1/3"><b>What it is trying to show</b><span>${esc(t.goal)}</span></div><div style="grid-column:3/5"><b>Why it matters to ASP-C2</b><span>${esc(t.rel)}</span></div>`;});});
+  const p=params();const r75=model({...L,cutoff:'75'},p,0),r50=model({...L,cutoff:'50'},p,0),r1=model({...L,cutoff:'1'},p,0);
+  $('#pools').innerHTML=[['≥75% moderate-to-strong',r75,'Today\u2019s label population · Vyloy, ASP-C2 baseline'],['≥50%',r50,'Hedge · Sponsor D'],['≥1% any expression',r1,'Broad · Sponsor A Phase 3']].map(([k,r,w])=>`<div class="pc"><b>${fmtK(r.funnel[4][1])}</b><span>${k} · US + EU5 + JP, 1L, tested</span><small>${w}</small></div>`).join('')+`<div class="pc" style="grid-column:1/-1;background:transparent;padding:6px 16px"><small>Pools are tested, HER2-negative, advanced patients at each cutoff with testing at ${pct(p.testing)}% (H2). Illustrative.</small></div>`;
+  $$('#asset [data-go]').forEach(a=>a.addEventListener('click',()=>go(a.dataset.go)));
+}
+
+
+
+/* =================== drawer =================== */
+const shade=$('#shade'),drawerBody=$('#drawerBody'),insp=$('#insp');
+function openDrawer(el){insp.style.display='none';[...drawerBody.children].forEach(c=>c.style.display='none');if(el){el.style.display='';}shade.classList.add('on');}
+function openInsp(html){[...drawerBody.children].forEach(c=>c.style.display='none');insp.innerHTML=html;insp.style.display='';shade.classList.add('on');}
+function closeDrawer(){shade.classList.remove('on');}
+$('#drawerX').addEventListener('click',closeDrawer);shade.addEventListener('click',e=>{if(e.target===shade)closeDrawer();});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeDrawer();});
+drawerBody.append($('#reg'),$('#agForm'));
+function bindInspectors(){$$('[data-insp]').forEach(c=>c.addEventListener('click',e=>{if(e.target.closest('select,button'))return;const a=AGENTS.find(x=>x.id===c.dataset.insp);const att=H.filter(h=>h.agents.includes(a.id));
+  openInsp(`<span class="kick">${CATN[a.cat][0]} agent</span><h3>${esc(a.n)}</h3><div class="st"><i class="ld ${a.sup?'sup':'run'}"></i>${a.sup?'Supervised — every proposal reviewed':'Running'}</div><p class="m" style="margin-bottom:10px">${esc(a.d)}</p>
+  <div class="kv"><b>Reads</b><span>${KN[a.k]} knowledge</span></div><div class="kv"><b>Cadence</b><span>${a.cat==='event'?a.every:'every '+a.every}${a.cat!=='event'?` <select data-cad="${a.id}" style="width:auto;margin-left:8px;padding:3px 24px 3px 8px;font-size:12px">${['1h','6h','12h','daily','weekly'].map(v=>`<option ${a.every===v?'selected':''}>${v}</option>`).join('')}</select>`:''}</span></div><div class="kv"><b>Attached to</b><span>${att.length?att.map(h=>h.id+' — '+esc(h.t.slice(0,70))+'…').join('<br>'):'No hypotheses yet'}</span></div><div class="kv"><b>Now</b><span>${esc(a.now)}</span></div><div class="kv"><b>Governance</b><span>Every output cited with source and retrieval date; Guardrail agent blocks unverifiable claims.</span></div>
+  <div style="display:flex;gap:8px;margin-top:18px">${a.cat!=='event'?`<button class="btn sm p" data-run="${a.id}">Run now</button>`:''}<button class="btn sm" id="inspClose">Close</button></div>`);
+  $('#inspClose').addEventListener('click',closeDrawer);$$('#insp [data-cad]').forEach(s=>s.addEventListener('change',()=>{a.every=s.value;toast(a.n+' now refreshes every '+s.value);renderCatalog();}));$$('#insp [data-run]').forEach(b=>b.addEventListener('click',()=>{pushLog(['Guardrail',a.n+' manual run requested · queued · results require review'],true);toast(a.n+' queued');closeDrawer();}));}));}
+
+
+/* theme */
+let theme='system';
+function applyTheme(t){theme=t;if(t==='system')document.documentElement.removeAttribute('data-theme');else document.documentElement.setAttribute('data-theme',t);$$('[data-theme-sel]').forEach(s=>s.value=t);}
+$$('[data-theme-sel]').forEach(s=>s.addEventListener('change',e=>applyTheme(e.target.value)));
+
+
+function renderSideAgents(){const run=AGENTS.filter(a=>!a.sup);const al=AGENTS.filter(a=>a.cat==='always').length;$('#sideAgents').innerHTML=`<b><span class="runner"><i></i><i></i><i></i></span>${run.length} agents running</b><div><span>Always-on</span><span>${al} · every 6h</span></div><div><span>Daily</span><span>${AGENTS.filter(a=>a.cat==='daily').length} · 07:00</span></div><div><span>On event</span><span>${AGENTS.filter(a=>a.cat==='event').length}</span></div><div><span>Next cycle</span><span id="nextCycle">—</span></div>`;}
+setInterval(()=>{const n=$('#nextCycle');if(!n)return;const now=new Date();const next=new Date(now);next.setHours(Math.ceil((now.getHours()+0.01)/6)*6,0,0,0);const ms=next-now;n.textContent=`${Math.floor(ms/3600000)}h ${Math.floor(ms%3600000/60000)}m`;},1000);
+
+/* =================== init =================== */
+function renderAll(){renderSide();renderSideAgents();renderAsset();renderBrief();renderWB();renderSig();renderSim();renderHub();renderPos();}
+setModel(ROLES[role].model);renderAll();
+</script>
+</body>
+</html>
