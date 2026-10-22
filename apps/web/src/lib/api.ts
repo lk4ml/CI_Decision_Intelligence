@@ -25,8 +25,14 @@ import type {
   Scenario,
   Signal,
   Source,
-  TrialsResponse,
   Trial,
+  Covered,
+  Coverage,
+  PositionHistoryEntry,
+  UnmatchedItem,
+  Digest,
+  Me,
+  AssetCreate,
 } from "./types";
 
 export const API_BASE = (
@@ -43,12 +49,25 @@ export class ApiError extends Error {
   }
 }
 
+/** Identity headers sent on every mutation (Addendum A #10). Updated from the Viewing-as selector. */
+const identity = { actor: "user:Asset lead", role: "Asset lead" };
+export function setIdentity(actor: string, role: string) {
+  identity.actor = actor;
+  identity.role = role;
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   let res: Response;
+  const mutating = !!init?.method && init.method !== "GET";
   try {
     res = await fetch(`${API_BASE}${path}`, {
       ...init,
-      headers: { "Content-Type": "application/json", Accept: "application/json", ...(init?.headers || {}) },
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+        ...(mutating ? { "X-Actor": identity.actor, "X-Role": identity.role } : {}),
+        ...(init?.headers || {}),
+      },
       cache: "no-store",
     });
   } catch (e) {
@@ -71,6 +90,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 const get = <T>(p: string) => request<T>(p);
 const post = <T>(p: string, body?: unknown) =>
   request<T>(p, { method: "POST", body: body === undefined ? undefined : JSON.stringify(body) });
+const put = <T>(p: string, body: unknown) => request<T>(p, { method: "PUT", body: JSON.stringify(body) });
 const patch = <T>(p: string, body: unknown) => request<T>(p, { method: "PATCH", body: JSON.stringify(body) });
 const del = <T>(p: string) => request<T>(p, { method: "DELETE" });
 const q = (params: Record<string, string | undefined>) => {
@@ -80,6 +100,14 @@ const q = (params: Record<string, string | undefined>) => {
   return out ? `?${out}` : "";
 };
 
+const EMPTY_COVERAGE: Coverage = { status: "never_run", last_run: null };
+async function getCovered<T>(path: string): Promise<Covered<T>> {
+  const r = await get<Covered<T> | T[]>(path);
+  // Contract (Addendum A #6): {items, coverage}. A bare array is tolerated and treated as "ok".
+  if (Array.isArray(r)) return { items: r, coverage: { status: "ok", last_run: null } };
+  return { items: r.items ?? [], coverage: r.coverage ?? EMPTY_COVERAGE };
+}
+
 export const api = {
   health: () => get<{ ok: boolean }>("/health"),
   landingStats: () => get<LandingStats>("/stats/landing"),
@@ -88,11 +116,11 @@ export const api = {
   asset: (slug: string) => get<AssetDetail>(`/assets/${slug}`),
   brief: (slug: string) => get<AssetBrief>(`/assets/${slug}/brief`),
   focus: (slug: string) => get<Focus>(`/assets/${slug}/focus`),
-  trials: async (slug: string): Promise<TrialsResponse> => {
-    // Contract: {trials, last_run}. Accept a bare array too (earlier contract draft).
-    const r = await get<TrialsResponse | Trial[]>(`/assets/${slug}/trials`);
-    return Array.isArray(r) ? { trials: r, last_run: null } : { trials: r.trials ?? [], last_run: r.last_run ?? null };
-  },
+  trials: (slug: string) => getCovered<Trial>(`/assets/${slug}/trials`),
+  createAsset: (body: AssetCreate) => post<AssetSummary>("/assets", body),
+  digest: (slug: string, role: string) => get<Digest>(`/assets/${slug}/digest${q({ role })}`),
+  unmatched: (slug: string) => get<UnmatchedItem[]>(`/assets/${slug}/unmatched`),
+  me: () => get<Me>("/me"),
   changes: (slug: string, role: string) => get<Changes>(`/assets/${slug}/changes${q({ role })}`),
 
   hypotheses: (slug: string) => get<Hypothesis[]>(`/assets/${slug}/hypotheses`),
@@ -102,18 +130,18 @@ export const api = {
   attachAgent: (hid: string, aid: string) => post<unknown>(`/hypotheses/${hid}/agents/${aid}`),
   detachAgent: (hid: string, aid: string) => del<unknown>(`/hypotheses/${hid}/agents/${aid}`),
 
-  signals: (slug: string, status?: string) => get<Signal[]>(`/assets/${slug}/signals${q({ status })}`),
-  applySignal: (id: string, actor: string, overrides?: Record<string, number>, reason?: string) =>
-    post<unknown>(`/signals/${id}/apply`, { actor, overrides, reason }),
-  dismissSignal: (id: string, actor: string) => post<unknown>(`/signals/${id}/dismiss`, { actor }),
-  undoSignal: (id: string, actor: string) => post<unknown>(`/signals/${id}/undo`, { actor }),
-  applyAll: (slug: string, actor: string, role: string) =>
-    post<unknown>(`/assets/${slug}/signals/apply-all`, { actor, role }),
+  signals: (slug: string, status?: string) => getCovered<Signal>(`/assets/${slug}/signals${q({ status })}`),
+  applySignal: (id: string, overrides?: Record<string, number>, reason?: string) =>
+    post<unknown>(`/signals/${id}/apply`, { actor: identity.actor, overrides, reason }),
+  dismissSignal: (id: string) => post<unknown>(`/signals/${id}/dismiss`, { actor: identity.actor }),
+  undoSignal: (id: string) => post<unknown>(`/signals/${id}/undo`, { actor: identity.actor }),
+  applyAll: (slug: string) => post<unknown>(`/assets/${slug}/signals/apply-all`, { actor: identity.actor }),
 
   proposals: (slug: string) => get<Proposal[]>(`/assets/${slug}/proposals`),
   patterns: (slug: string) => get<Pattern[]>(`/assets/${slug}/patterns`),
 
   levers: (slug: string) => get<LeverSchema>(`/assets/${slug}/levers`),
+  putLevers: (slug: string, levers: Levers) => put<LeverSchema>(`/assets/${slug}/levers`, { levers }),
   runModels: (asset: string, levers: Levers) => post<ModelRunResult>("/models/run", { asset, levers }),
   monteCarlo: (asset: string, levers: Levers, n = 500) =>
     post<MonteCarloResult>("/models/montecarlo", { asset, levers, n }),
@@ -123,11 +151,14 @@ export const api = {
     post<Scenario>(`/assets/${slug}/scenarios`, { name, levers }),
 
   positions: (slug: string) => get<Position[]>(`/assets/${slug}/positions`),
-  lockPosition: (id: string, actor: string, role: string) => post<Position>(`/positions/${id}/lock`, { actor, role }),
-  exportBrief: (slug: string, actor: string) => post<BriefExport>(`/assets/${slug}/briefs`, { actor, exported_by: actor }),
+  lockPosition: (id: string, scenario_id?: string) =>
+    post<Position>(`/positions/${id}/lock`, scenario_id ? { scenario_id } : {}),
+  positionHistory: (id: string) => get<PositionHistoryEntry[]>(`/positions/${id}/history`),
+  exportBrief: (slug: string) => post<BriefExport>(`/assets/${slug}/briefs`, { exported_by: identity.actor }),
   briefHtmlUrl: (id: string) => `${API_BASE}/briefs/${id}.html`,
 
   agents: () => get<Agent[]>("/agents"),
+  agent: (id: string) => get<Agent>(`/agents/${id}`),
   agentsStatus: () => get<AgentsStatus>("/agents/status"),
   patchAgent: (id: string, body: Partial<Pick<Agent, "cadence_minutes" | "status" | "description">>) =>
     patch<Agent>(`/agents/${id}`, body),

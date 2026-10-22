@@ -12,6 +12,8 @@ export interface AssetSummary {
   biomarker: string;
   phase: string;
   phase_source: PhaseSource;
+  registry_phase?: string | null;
+  phase_discrepancy?: string | null;
 }
 
 export interface AssetCounts {
@@ -70,6 +72,7 @@ export interface AgentRun {
   signals_created?: number;
   blocked?: number;
   error?: string | null;
+  summary?: string | null;
 }
 
 export interface Trial {
@@ -90,10 +93,17 @@ export interface Trial {
   retrieved_at: string;
 }
 
-export interface TrialsResponse {
-  trials: Trial[];
-  last_run: AgentRun | null;
+export type CoverageStatus = "ok" | "source_unreachable" | "never_run" | string;
+export interface Coverage {
+  status: CoverageStatus;
+  last_run: { agent_key: string; finished_at: string | null; error: string | null } | null;
 }
+/** Addendum A #6 coverage envelope used by /trials and /signals. */
+export interface Covered<T> {
+  items: T[];
+  coverage: Coverage;
+}
+export type TrialsResponse = Covered<Trial>;
 
 export interface ChangeSignal {
   id?: string;
@@ -156,7 +166,9 @@ export interface Hypothesis {
   week_delta: number;
   agents: AgentRef[];
   evidence: EvidenceItem[];
-  position_line?: string | null;
+  position_line: string;
+  crossed?: boolean;
+  crossed_at?: string | null;
 }
 
 export interface HypothesisCreate {
@@ -167,7 +179,7 @@ export interface HypothesisCreate {
   threshold: number;
   change_trigger_text: string;
   agent_ids: string[];
-  position_line?: string;
+  position_line: string;
   keywords?: string[];
 }
 
@@ -208,6 +220,7 @@ export type Levers = Record<string, LeverValue>;
 export interface LeverSchema {
   schema: LeverSchemaItem[];
   defaults: Levers;
+  current?: Levers;
 }
 
 export interface OptionResults {
@@ -222,6 +235,8 @@ export interface ProposalOption {
   label: string;
   lever: string;
   value: LeverValue;
+  levers?: Levers;
+  is_current?: boolean;
   results: OptionResults;
 }
 
@@ -257,6 +272,7 @@ export interface Proposal {
   signals: ProposalSignal[];
   options: ProposalOption[];
   fired_at?: string | null;
+  total_movement?: number;
 }
 
 export interface Pattern {
@@ -275,6 +291,8 @@ export interface Kpi {
   value: number | string | null;
   unit?: string | null;
   note?: string | null;
+  basis?: "stand_in_assumption" | "sourced" | string | null;
+  source_url?: string | null;
 }
 
 export interface ModelOutput {
@@ -354,6 +372,8 @@ export interface Agent {
   last_run_at: string | null;
   last_run: AgentRun | null;
   attached_hypotheses?: string[];
+  hypothesis_ids?: string[];
+  governance_notes?: string | null;
 }
 
 export interface AgentsStatus {
@@ -373,6 +393,9 @@ export interface Source {
   license_notes: string | null;
   last_fetch_at: string | null;
   last_status: string | null;
+  last_error?: string | null;
+  last_ok_at?: string | null;
+  agent_keys?: string[];
   agents?: { key: string; name: string }[] | string[];
 }
 
@@ -393,4 +416,56 @@ export interface ActivityEvent {
 export interface LandingStats {
   sources_refreshed_1h: number;
   agents_running: number;
+}
+
+export interface PositionHistoryEntry {
+  id?: string;
+  version: number;
+  locked_by: string | null;
+  locked_at: string | null;
+  snapshot: {
+    statement?: string;
+    levers?: Levers;
+    hypotheses?: { code: string; confidence: number; threshold?: number }[];
+    signal_ids?: string[];
+    scenario?: { id?: string; peak?: Quantiles; rnpv?: Quantiles } | null;
+    model_versions?: Record<string, string> | null;
+    audit_head_hash?: string | null;
+  } | null;
+}
+
+export interface UnmatchedItem {
+  id: string;
+  reason: string;
+  title?: string | null;
+  url?: string | null;
+  source_key?: string | null;
+  retrieved_at?: string | null;
+  created_at?: string | null;
+}
+
+export interface Digest {
+  subject?: string;
+  html?: string;
+  text?: string;
+  body?: string;
+  role?: string;
+  items?: { title: string; so_what?: string; agent?: string; moves?: string }[];
+}
+
+export interface Me {
+  actor: string;
+  role: string;
+}
+
+export interface AssetCreate {
+  code: string;
+  name: string;
+  mechanism: string;
+  indication: string;
+  biomarker?: string;
+  phase: string;
+  decision_type: string;
+  governance_forum?: string;
+  governance_date?: string;
 }
