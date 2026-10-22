@@ -80,6 +80,12 @@ def patch_agent(aid: str, body: AgentPatch, db: Session = Depends(get_session), 
     audit.record(db, w.actor, "agent.updated", "agent", a.id, {"key": a.key, "changes": ch}, before=before)
     events.publish_on_commit(db, "audit", {"entity": "agent", "id": a.id, "action": "agent.updated"}, None)
     db.commit()
+    if "cadence_minutes" in ch or "status" in ch:
+        try:
+            from app.agents import scheduler
+            scheduler.reschedule(a.key)
+        except ImportError:
+            pass
     return views.agent_view(db, a)
 
 
