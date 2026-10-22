@@ -125,3 +125,41 @@ from the §7.4 formula.
 ## Web routes (PRD §4)
 `/`, `/app/[asset]/{asset,changes,hypotheses,signals,workbench,simulate,positions}`, `/app/[asset]/studio`.
 API base from `NEXT_PUBLIC_API_URL` (default `http://localhost:8000/api/v1`).
+
+## Addendum A (architecture review, binding — supersedes conflicting lines above)
+1. **Per-asset model config.** `Asset.lever_schema JSON`, `Asset.model_params JSON` =
+   `{bindings:{role_name:"Hn"}, inputs:{name:{value,unit,basis:"stand_in_assumption"|"sourced",source_url?}}}`.
+   `/levers` and `/models/*` read these. Every KPI carries `basis`; UI labels stand-in values. Mockup H1–H10 / 7 patterns are
+   CLDN18.2-only: do not copy into KRAS assets. `/models/registry` → `engine:"stand_in"` for all five.
+2. `Hypothesis.position_line` (one of the 6 lines, NOT NULL); position's hypotheses are derived from it (drop `Position.hypothesis_codes`).
+   Category enum `Population|Intervention|Comparator|Outcomes|Business`.
+3. **Server lever state.** `Asset.current_levers JSON` (defaults from lever_schema). `PUT /assets/{slug}/levers {levers}` → audit,
+   patterns.evaluate, SSE `levers.updated`. `Position.statement_template` rendered with levers + model outputs.
+   Trigger namespace exactly: `H1..Hn` (0–1), `crossed_H1..`, `levers_<name>`.
+4. `Hypothesis.crossed bool`, `crossed_at`; recompute after apply/undo/threshold PATCH. `ProposedDecision.framing ("take"|"frame")`,
+   `total_movement`. Un-crossing does not un-reopen; reopened stays until re-locked.
+5. **Provenance.** `Signal.fetched_item_id` NOT NULL; guardrail asserts source_url/retrieved_at equal the FetchedItem's and the URL
+   host matches the Source host. `Signal.so_what_origin "rules"|"llm"`; LLM so_what blocked if it contains a number/NCT/PMID absent from
+   the fetched raw/structured. No `POST /signals`, no manual trial create. `UnmatchedItem.asset_id`; `GET /assets/{slug}/unmatched`.
+6. **Coverage envelope.** `/trials`, `/signals` return `{items:[...], coverage:{status:"ok"|"source_unreachable"|"never_run",
+   last_run:{agent_key,finished_at,error}|null}}`. `Source.last_error`, `last_ok_at`. `AgentRun.summary` = agent card "current activity"
+   ("Not yet run" if none). `sources_refreshed_1h` counts only ok runs.
+7. **Lock.** body `{scenario_id?}`; if absent run Monte Carlo on current_levers. `PositionHistory.snapshot =
+   {statement, levers, hypotheses:[{code,confidence,threshold}], signal_ids, scenario:{id,peak:{p10,p50,p90},rnpv:{..}}, model_versions,
+   audit_head_hash}`. `GET /positions/{id}/history`.
+8. **Explore parity.** proposal `options[]` include `levers` (full dict), `is_current`, `results` computed by the same deterministic
+   function as `POST /models/run`.
+9. Extra endpoints: `POST /assets` (onboard → 6 empty positions), `GET /assets/{slug}/digest?role=` (render only),
+   `demand.series.pools` in `/models/run`, `GET /me` → `{actor, role}`, `GET /agents/{id}` (+hypothesis_ids, governance_notes),
+   `GET /sources/{key}` (+agent_keys), `GET /audit/verify` → `{ok,length,head_hash}`.
+10. **Roles.** Enum `"Asset lead","Clinical","Access & pricing","Forecasting","Operations","Reviewer","Admin"`. No auth in slice:
+    mutations read `X-Actor` and `X-Role` headers. Enforce: lock = owner_role or Admin (403); apply/dismiss = owns a moved hypothesis or
+    Asset lead/Admin (403); apply-all scoped to role's hypotheses; Reviewer is read-only. `ROLE_DEFAULTS` (Clinical → ptrs tab, etc.).
+11. **Append-only.** Undo appends a compensating ConfidenceEvent (`reverts_event_id`); confidence = clamp(start + Σ events).
+    `AuditEvent.ts`; hash = sha256(canonical JSON sorted keys + prev_hash); process-wide lock on audit writes. 409 on apply/dismiss of a
+    non-pending signal and undo of a pending one.
+12. Scheduler runs distinct (agent, asset) pairs from HypothesisAgent; `POST /hypotheses` enqueues immediate run for attached agents and
+    returns `scheduled:[{agent_key,run_at}]`. `Asset.registry_phase`, `registry_nct_ids JSON`, `registry_checked_at`,
+    `phase_discrepancy`; phase_source stays "user" until registry confirms.
+13. Brief = printable HTML (pilot substitute for PDF) incl. citations (url+retrieved_at), alternatives, change_trigger_text.
+    Run uvicorn with `--workers 1` (in-process SSE bus). SSE payload `{asset_slug, entity, id, ...}`.
