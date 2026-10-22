@@ -9,7 +9,7 @@ import pytest
 from app.connectors import astellas_ir, ctgov, europepmc, http, openalex, openfda, pubmed
 from app.connectors.http import SourceUnavailable
 
-from fixtures.helpers import all_source_routes, route_transport
+from fixtures.helpers import all_source_routes, route_transport, text_resp
 
 
 @pytest.fixture
@@ -230,3 +230,76 @@ def test_connect_error_is_unavailable():
     finally:
         http.set_transport(None)
     assert ei.value.host == "api.openalex.org"
+
+
+# ------------------------------------------------------------- transport safety
+
+def _with(handler):
+    http.set_transport(httpx.MockTransport(handler))
+
+
+def test_astellas_redirect_to_foreign_host_rejected():
+    def h(req):
+        return httpx.Response(302, headers={"location": "https://evil.example.com/news"})
+    _with(h)
+    try:
+        with pytest.raises(SourceUnavailable) as ei:
+            run(astellas_ir.fetch(["ASP3082"]))
+    finally:
+        http.set_transport(None)
+    assert "allowlist" in ei.value.detail
+
+
+@pytest.mark.parametrize("target", ["http://127.0.0.1/admin", "https://169.254.169.254/latest",
+                                    "https://10.0.0.5/x", "http://www.astellas.com/en/news"])
+def test_astellas_redirect_to_internal_or_http_rejected(target):
+    _with(lambda req: httpx.Response(301, headers={"location": target}))
+    try:
+        with pytest.raises(SourceUnavailable):
+            run(astellas_ir.fetch(["ASP3082"]))
+    finally:
+        http.set_transport(None)
+
+
+def test_host_allowlist_suffix_check():
+    assert astellas_ir.allowed_host("astellas.com") and astellas_ir.allowed_host("www.astellas.com")
+    assert not astellas_ir.allowed_host("evilastellas.com")
+    assert not astellas_ir.allowed_host("astellas.com.evil.net")
+
+
+def test_response_size_cap(monkeypatch):
+    monkeypatch.setattr(http, "MAX_BYTES", 1000)
+    _with(lambda req: httpx.Response(200, content=b"x" * 5000))
+    try:
+        with pytest.raises(SourceUnavailable) as ei:
+            run(http.get_response("t", "https://www.astellas.com/a", max_bytes=1000))
+    finally:
+        http.set_transport(None)
+    assert "exceeds" in ei.value.detail or "too large" in ei.value.detail
+
+
+def test_astellas_final_url_and_pdf_content_type():
+    routes = all_source_routes()
+    # press release reached via an in-allowlist redirect -> item.url is the final URL
+    routes["www.astellas.com/en/news/99901"] = lambda r: httpx.Response(
+        301, headers={"location": "https://newsroom.astellas.com/releases/99901"})
+    routes["newsroom.astellas.com/releases/99901"] = text_resp("astellas_press_99901.html")
+    # PDF served as HTML -> must be skipped, never parsed
+    routes["www.astellas.com/en/system/files/fake_fy2026_q2_presentation.pdf"] = \
+        lambda r: httpx.Response(200, text="<html>not a pdf ASP3082</html>",
+                                 headers={"content-type": "text/html"})
+    http.set_transport(route_transport(routes))
+    try:
+        items = run(astellas_ir.fetch(["ASP3082", "setidegrasib"]))
+    finally:
+        http.set_transport(None)
+    assert [i.url for i in items] == ["https://newsroom.astellas.com/releases/99901"]
+
+
+def test_openalex_without_work_id_skipped():
+    _with(lambda r: httpx.Response(200, json={"results": [
+        {"id": None, "doi": "https://doi.org/10.1/x", "display_name": "no id"}]}))
+    try:
+        assert run(openalex.search_works("x")) == []
+    finally:
+        http.set_transport(None)

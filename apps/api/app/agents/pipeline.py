@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import asyncio
 import threading
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Optional
 
@@ -35,7 +36,7 @@ from app.services import audit, events
 
 from . import guardrail, registry
 from .extract import Facts, extract
-from .implication import implicate
+from .implication import Implication, implicate, llm_enabled
 from .match import match
 
 ACTOR_PREFIX = "agent:"
@@ -135,8 +136,8 @@ def _upsert_fetched(session: Session, item: RawItem) -> tuple[FetchedItem, bool,
 def _upsert_trial(session: Session, asset: Asset, facts: Facts, fi: FetchedItem) -> Optional[dict]:
     """Upsert Trial row; return the previous trial snapshot for this asset (or None)."""
     t = facts.trial or {}
-    if not t.get("nct_id"):
-        return None
+    if not t.get("nct_id") or facts.role not in ("own", "competitor", "standard"):
+        return None  # "context" trials are matched but not listed as asset trials
     row = session.execute(select(Trial).where(Trial.asset_id == asset.id,
                                               Trial.nct_id == t["nct_id"])).scalar_one_or_none()
     prev = None
@@ -189,8 +190,10 @@ def _unmatched(session: Session, fi: FetchedItem, asset: Asset, reason: str) -> 
 
 
 def _summary(agent: Agent, asset: Optional[Asset], run: AgentRun, src_names: str,
-             failed: Optional[dict] = None) -> str:
+             failed: Optional[dict] = None, llm_used: int = 0) -> str:
     who = asset.code if asset else "all assets"
+    llm = (f"LLM used for {llm_used} so-what(s)" if llm_used else
+           ("LLM enabled, not used" if llm_enabled() else "LLM off (rules only)"))
     if run.status == "source_unreachable":
         detail = (run.error or "").split("): ", 1)[-1]
         return f"{src_names} unreachable for {who} - {detail}. No data substituted."
@@ -200,7 +203,7 @@ def _summary(agent: Agent, asset: Optional[Asset], run: AgentRun, src_names: str
     ok_names = " / ".join(registry.SOURCE_NAMES.get(k, k)
                           for k in registry.AGENT_SOURCES.get(agent.key, []) if k not in failed) or src_names
     text = (f"Checked {run.items_fetched} {ok_names} records for {who}: {run.items_new} new/changed, "
-            f"{run.signals_created} signals proposed, {run.blocked} blocked by guardrail")
+            f"{run.signals_created} signals proposed, {run.blocked} blocked by guardrail; {llm}")
     if failed:
         text += ". Unreachable: " + "; ".join(
             f"{registry.SOURCE_NAMES.get(k, k)} ({e.detail})" for k, e in failed.items()
@@ -208,71 +211,110 @@ def _summary(agent: Agent, asset: Optional[Asset], run: AgentRun, src_names: str
     return text
 
 
-async def _process(session: Session, agent: Agent, asset: Asset, run: AgentRun,
-                   rows: list[tuple[RawItem, dict]]) -> list[str]:
+@dataclass
+class _Plan:
+    item: RawItem
+    ctx: dict
+    pre: Optional[Facts] = None          # ctgov role/on-indication (for Trial upsert)
+    facts: Optional[Facts] = None
+    new_for_asset: bool = False
+    reason: Optional[str] = None         # unmatched reason decided before implication
+    matches: list = field(default_factory=list)
+    imp: Optional[Implication] = None
+    rules_imp: Optional[Implication] = None
+
+
+def _plan_reads(session: Session, agent: Agent, asset: Asset,
+                rows: list[tuple[RawItem, dict]]) -> tuple[list[_Plan], list[dict]]:
+    """Phase 1 (DB reads only, no network): change detection, extract, match."""
     hyps = _hypotheses_for(session, agent, asset)
-    signal_ids: list[str] = []
+    plans: list[_Plan] = []
     own_trials: list[dict] = []
-    sources = {s.key: s for s in session.execute(select(Source)).scalars()}
     for item, ctx in rows:
-        fi, changed, prev_data = _upsert_fetched(session, item)
-        facts_prev = None
+        p = _Plan(item=item, ctx=ctx)
+        fi = session.execute(select(FetchedItem).where(
+            FetchedItem.source_key == item.source_key,
+            FetchedItem.external_id == item.external_id)).scalar_one_or_none()
+        changed = fi is None or fi.content_hash != item.content_hash
+        prev_data = (fi.raw or {}).get("data") if fi is not None else None
+        p.new_for_asset = changed or not _already_processed(session, fi, asset)
+        trial_prev = None
         if item.source_key == "ctgov":
-            pre = extract(asset, item, ctx, None)  # role/on-indication only
-            if pre.role == "own" and pre.on_indication:
+            p.pre = extract(asset, item, ctx, None)
+            if p.pre.role == "own" and p.pre.on_indication:
                 own_trials.append(item.data)
-        new_for_asset = changed or not _already_processed(session, fi, asset)
-        if not new_for_asset:
+            row = session.execute(select(Trial).where(
+                Trial.asset_id == asset.id, Trial.nct_id == item.external_id)).scalar_one_or_none()
+            if row is not None:
+                trial_prev = {"status": row.status, "phase": row.phase,
+                              "primary_completion": row.primary_completion}
+        if p.new_for_asset:
             if item.source_key == "ctgov":
-                pre = extract(asset, item, ctx, None)
-                if pre.on_indication:
-                    _upsert_trial(session, asset, pre, fi)
+                p.facts = extract(asset, item, ctx, trial_prev if trial_prev is not None else
+                                  (prev_data if changed and prev_data else None))
+                if not p.facts.on_indication:
+                    p.reason = "off_indication"
+            else:
+                p.facts = extract(asset, item, ctx, None)
+            if p.reason is None:
+                p.matches = match(hyps, " ".join([item.title or "", item.text or ""]))
+                if not p.matches:
+                    p.reason = "no_hypothesis_match"
+        plans.append(p)
+    return plans, own_trials
+
+
+async def _plan_implications(plans: list[_Plan]) -> None:
+    """Phase 2 (network/LLM, no DB access)."""
+    for p in plans:
+        if p.new_for_asset and p.reason is None:
+            p.imp = await implicate(p.item, p.facts, p.matches)
+            if p.imp.origin == "llm":
+                p.rules_imp = await implicate(p.item, p.facts, p.matches, use_llm=False)
+            if not p.imp.moves:
+                p.reason = "no_move_proposed"
+
+
+def _write(session: Session, agent: Agent, asset: Asset, run: AgentRun, plans: list[_Plan],
+           own_trials: list[dict]) -> tuple[list[str], int]:
+    """Phase 3 (one short write transaction; caller commits)."""
+    sources = {s.key: s for s in session.execute(select(Source)).scalars()}
+    signal_ids: list[str] = []
+    llm_used = 0
+    for p in plans:
+        item = p.item
+        fi, _changed, _prev = _upsert_fetched(session, item)
+        if p.pre is not None and p.pre.on_indication:
+            _upsert_trial(session, asset, p.pre, fi)
+        if not p.new_for_asset:
             continue
         run.items_new += 1
-        # extract
-        if item.source_key == "ctgov":
-            pre = extract(asset, item, ctx, None)
-            if pre.on_indication:
-                facts_prev = _upsert_trial(session, asset, pre, fi)
-            facts = extract(asset, item, ctx, facts_prev if facts_prev is not None else
-                            (prev_data if changed and prev_data else None))
-        else:
-            facts = extract(asset, item, ctx, None)
-        fi.structured = facts.model_dump(exclude={"trial"})
-        if item.source_key == "ctgov" and not facts.on_indication:
-            _unmatched(session, fi, asset, "off_indication")
+        fi.structured = p.facts.model_dump(exclude={"trial"}) if p.facts else None
+        if p.reason:
+            _unmatched(session, fi, asset, p.reason)
             continue
-        # match
-        matches = match(hyps, " ".join([item.title or "", item.text or ""]))
-        if not matches:
-            _unmatched(session, fi, asset, "no_hypothesis_match")
-            continue
-        # implication
-        imp = await implicate(item, facts, matches)
-        if not imp.moves:
-            _unmatched(session, fi, asset, "no_move_proposed")
-            continue
-        # guardrail
         src = sources.get(item.source_key)
-        reason = guardrail.check(source_url=item.url, retrieved_at=_naive(item.retrieved_at),
-                                 so_what=imp.so_what, fetched_item=fi, source_key=item.source_key,
-                                 source_base_url=src.base_url if src else None)
-        if reason and imp.origin == "llm":
-            # LLM text failed provenance checks: fall back to the rules so-what once.
-            imp = await implicate(item, facts, matches, use_llm=False)
-            reason2 = guardrail.check(source_url=item.url, retrieved_at=_naive(item.retrieved_at),
-                                      so_what=imp.so_what, fetched_item=fi,
-                                      source_key=item.source_key,
-                                      source_base_url=src.base_url if src else None)
-            reason = reason2 and f"{reason}; rules fallback: {reason2}"
-            if not reason2:
-                reason = None
+        imp = p.imp
+
+        def _check(i: Implication) -> Optional[str]:
+            return guardrail.check(source_url=item.url, retrieved_at=_naive(item.retrieved_at),
+                                   so_what=i.so_what, fetched_item=fi, source_key=item.source_key,
+                                   extra_texts=i.llm_texts())
+
+        reason = _check(imp)
+        if reason and imp.origin == "llm" and p.rules_imp is not None:
+            reason2 = _check(p.rules_imp)
+            if reason2 is None:
+                imp, reason = p.rules_imp, None  # LLM text rejected; rules text is sourced
+            else:
+                reason = f"{reason}; rules fallback: {reason2}"
         if reason:
             run.blocked += 1
             _unmatched(session, fi, asset, reason)
             continue
-        # persist
-        sig = Signal(asset_id=asset.id, agent_id=agent.id, title=item.title[:500] or item.external_id,
+        if imp.origin == "llm":
+            llm_used += 1
+        sig = Signal(asset_id=asset.id, agent_id=agent.id, title=(item.title or item.external_id)[:500],
                      so_what=imp.so_what,
                      source_name=src.name if src else registry.SOURCE_NAMES.get(item.source_key, item.source_key),
                      source_url=fi.url, retrieved_at=fi.retrieved_at,
@@ -283,13 +325,13 @@ async def _process(session: Session, agent: Agent, asset: Asset, run: AgentRun,
         for mv in imp.moves:
             session.add(SignalMove(signal_id=sig.id, hypothesis_id=mv.hypothesis.id, delta=mv.delta,
                                    weight=mv.weight, rationale=mv.rationale))
-        session.flush()
         run.signals_created += 1
         signal_ids.append(sig.id)
         audit.record(session, ACTOR_PREFIX + agent.key, "signal.created", "signal", sig.id,
                      payload={"title": sig.title, "source_url": sig.source_url,
                               "retrieved_at": sig.retrieved_at.isoformat(),
                               "fetched_item_id": fi.id, "so_what_origin": imp.origin,
+                              "llm_disagrees": [m.hypothesis.code for m in imp.moves if m.llm_disagrees],
                               "moves": [{"hypothesis_code": m.hypothesis.code, "delta": m.delta}
                                         for m in imp.moves]},
                      after={"signal_id": sig.id, "review_status": "pending"}, asset_id=asset.id)
@@ -298,22 +340,30 @@ async def _process(session: Session, agent: Agent, asset: Asset, run: AgentRun,
         if change:
             audit.record(session, ACTOR_PREFIX + agent.key, "asset.phase_reconciled", "asset",
                          asset.id, payload=change, asset_id=asset.id)
-    return signal_ids
+    return signal_ids, llm_used
 
 
 async def _run_one(session: Session, agent: Agent, asset: Asset) -> AgentRun:
-    run = AgentRun(agent_id=agent.id, asset_id=asset.id, started_at=utcnow(), status="running",
+    started = utcnow()
+    run = AgentRun(agent_id=agent.id, asset_id=asset.id, started_at=started, status="running",
                    items_fetched=0, items_new=0, signals_created=0, blocked=0)
-    session.add(run)
-    session.flush()
     src_keys = registry.AGENT_SOURCES.get(agent.key, list(agent.source_keys or []))
     src_names = " / ".join(registry.SOURCE_NAMES.get(k, k) for k in src_keys) or agent.name
     signal_ids: list[str] = []
     failed: dict[str, SourceUnavailable] = {}
+    llm_used = 0
     try:
+        # 1) network fetch - no DB writes open
         rows, failed = await registry.fetch_for(agent.key, asset)
         run.items_fetched = len(rows)
-        signal_ids = await _process(session, agent, asset, run, rows)
+        # 2) reads + extract + match, then end the read transaction
+        plans, own_trials = _plan_reads(session, agent, asset, rows)
+        session.commit()
+        # 3) implication (may call the LLM) - no DB access
+        await _plan_implications(plans)
+        # 4) single short write transaction
+        session.add(run)
+        signal_ids, llm_used = _write(session, agent, asset, run, plans, own_trials)
         run.status = "ok"  # at least one source answered
         _update_sources(session, [k for k in src_keys if k not in failed], "ok", None)
         for k, e in failed.items():
@@ -321,15 +371,18 @@ async def _run_one(session: Session, agent: Agent, asset: Asset) -> AgentRun:
         if failed:
             run.error = "; ".join(str(e) for e in failed.values())
     except SourceUnavailable as e:
-        session.rollback()  # discard any partial writes; record the outage honestly
+        session.rollback()  # nothing partial; record the outage honestly
         session.add(run)
         run.status = "source_unreachable"
         all_failed = getattr(e, "failed_sources", None) or {e.source_key: e}
         run.error = "; ".join(str(x) for x in all_failed.values())
         run.items_fetched = run.items_new = run.signals_created = run.blocked = 0
+        signal_ids = []
         for k, x in all_failed.items():
             _update_sources(session, [k] if k in src_keys else src_keys, "source_unreachable", str(x))
     except KeyError as e:
+        session.rollback()
+        session.add(run)
         run.status = "error"
         run.error = f"agent not runnable: {e}"
     except Exception as e:  # noqa: BLE001
@@ -338,15 +391,18 @@ async def _run_one(session: Session, agent: Agent, asset: Asset) -> AgentRun:
         run.status = "error"
         run.error = f"{type(e).__name__}: {e}"
         run.items_fetched = run.items_new = run.signals_created = run.blocked = 0
+        signal_ids = []
+    session.add(run)
     run.finished_at = utcnow()
-    run.summary = _summary(agent, asset, run, src_names, failed)
+    run.summary = _summary(agent, asset, run, src_names, failed, llm_used)
     agent.last_run_at = run.finished_at
     session.add(agent)
+    session.flush()
     audit.record(session, ACTOR_PREFIX + agent.key, "agent.run", "agent_run", run.id,
                  payload={"agent_key": agent.key, "asset": asset.slug, "status": run.status,
                           "items_fetched": run.items_fetched, "items_new": run.items_new,
                           "signals_created": run.signals_created, "blocked": run.blocked,
-                          "error": run.error}, asset_id=asset.id)
+                          "llm_used": llm_used, "error": run.error}, asset_id=asset.id)
     session.commit()
     for sid in signal_ids:
         sig = session.get(Signal, sid)
