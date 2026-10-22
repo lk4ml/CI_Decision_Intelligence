@@ -341,6 +341,8 @@ def _write(session: Session, agent: Agent, asset: Asset, run: AgentRun, plans: l
         if not p.new_for_asset:
             continue
         run.items_new += 1
+        # This asset is acting on the fetch that just happened: provenance = this retrieval.
+        fi.url, fi.retrieved_at = item.url, _naive(item.retrieved_at)
         for uid in p.stale_unmatched_ids:  # superseded by this re-evaluation
             old = session.get(UnmatchedItem, uid)
             if old is not None:

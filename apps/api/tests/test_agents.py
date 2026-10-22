@@ -495,5 +495,6 @@ def test_unmatched_reevaluated_after_new_hypothesis(session):
         r3 = run_agent(session, "registry_watch", "asp3082-pdac")
     finally:
         http.set_transport(None)
-    assert r3.items_new == 1 and r3.signals_created == 1
+    reasons = [u.reason for u in session.query(UnmatchedItem)]
+    assert r3.items_new == 1 and r3.signals_created == 1, reasons
     assert session.query(UnmatchedItem).count() == 0  # stale row superseded
