@@ -29,7 +29,7 @@ def list_signals(slug: str, status: Optional[str] = None, db: Session = Depends(
 @router.post("/signals/{sid}/apply")
 def apply_signal(sid: str, body: ApplyBody = Body(default_factory=ApplyBody), db: Session = Depends(get_session),
                  w: Who = Depends(who)):
-    r = review.apply(db, sid, body.actor or w.actor, w.role, body.overrides, body.reason)
+    r = review.apply(db, sid, w.actor, w.role, body.overrides, body.reason)
     db.commit()
     return {**r, "signal": views.signal_view(db, db.get(Signal, sid))}
 
@@ -37,7 +37,7 @@ def apply_signal(sid: str, body: ApplyBody = Body(default_factory=ApplyBody), db
 @router.post("/signals/{sid}/dismiss")
 def dismiss_signal(sid: str, body: ReasonBody = Body(default_factory=ReasonBody), db: Session = Depends(get_session),
                    w: Who = Depends(who)):
-    r = review.dismiss(db, sid, body.actor or w.actor, w.role, body.reason)
+    r = review.dismiss(db, sid, w.actor, w.role, body.reason)
     db.commit()
     return {**r, "signal": views.signal_view(db, db.get(Signal, sid))}
 
@@ -45,7 +45,7 @@ def dismiss_signal(sid: str, body: ReasonBody = Body(default_factory=ReasonBody)
 @router.post("/signals/{sid}/undo")
 def undo_signal(sid: str, body: ReasonBody = Body(default_factory=ReasonBody), db: Session = Depends(get_session),
                 w: Who = Depends(who)):
-    r = review.undo(db, sid, body.actor or w.actor, w.role, body.reason)
+    r = review.undo(db, sid, w.actor, w.role, body.reason)
     db.commit()
     return {**r, "signal": views.signal_view(db, db.get(Signal, sid))}
 

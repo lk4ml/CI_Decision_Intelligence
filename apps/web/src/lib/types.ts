@@ -123,8 +123,8 @@ export interface ChangePosition {
   line?: string;
 }
 
-/** Each bucket may be a number or a list; the UI accepts both. */
-export type CountOrList<T> = number | T[];
+/** Contract bucket is `{count, items}`; a bare number or list is tolerated. */
+export type CountOrList<T> = number | T[] | { count: number; items: T[] };
 
 export interface Changes {
   lede: string;
@@ -316,7 +316,7 @@ export interface Quantiles {
 export interface MonteCarloResult {
   peak: Quantiles;
   rnpv: Quantiles;
-  histogram: (number | { x?: number; bin?: number; lo?: number; hi?: number; count: number })[];
+  histogram: (number | { x0?: number; x1?: number; x?: number; bin?: number; lo?: number; hi?: number; count: number })[];
   negative_share: number;
   n?: number;
 }

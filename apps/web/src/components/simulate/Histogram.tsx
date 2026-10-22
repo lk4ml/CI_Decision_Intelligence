@@ -3,7 +3,7 @@ import type { MonteCarloResult } from "@/lib/types";
 
 export default function Histogram({ mc }: { mc: MonteCarloResult }) {
   const bins = mc.histogram.map((h) =>
-    typeof h === "number" ? { count: h, lo: undefined as number | undefined, hi: undefined as number | undefined } : { count: h.count, lo: h.lo ?? h.x ?? h.bin, hi: h.hi },
+    typeof h === "number" ? { count: h, lo: undefined as number | undefined, hi: undefined as number | undefined } : { count: h.count, lo: h.x0 ?? h.lo ?? h.x ?? h.bin, hi: h.x1 ?? h.hi },
   );
   if (!bins.length) return <div className="f s">No histogram returned.</div>;
   const mx = Math.max(...bins.map((b) => b.count), 1);

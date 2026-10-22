@@ -417,3 +417,83 @@ def test_extract_context_role_and_basket_rule(session):
     comp = {"title": "daraxonrasib study", "interventions": [{"name": "daraxonrasib"}],
             "conditions": ["Pancreatic Cancer"]}
     assert trial_role(asset, comp, {}) == ("competitor", True)
+
+
+def _add_second_asset(session):
+    a = Asset(slug="asp3082-nsclc", code="ASP3082-NSCLC", name="Setidegrasib (ASP3082)",
+              indication="Pancreatic ductal adenocarcinoma (test twin)", biomarker="KRAS G12D+",
+              phase="Phase 3", phase_source="user",
+              watch_terms={"own": ["ASP3082", "setidegrasib"], "competitors": ["daraxonrasib"]})
+    session.add(a)
+    session.flush()
+    extra = {"position_line": "Comparator"} if hasattr(Hypothesis, "position_line") else {}
+    h = Hypothesis(asset_id=a.id, code="H7", category="Comparator", owner_role="Clinical",
+                   confidence_start=50, confidence=50, threshold=65,
+                   statement="At least one competitor KRAS G12D-selective or pan-RAS agent will reach approval before our pivotal reads out.",
+                   keywords=["Phase 3", "competitor", "KRAS G12D", "pan-RAS", "approval"], **extra)
+    session.add(h)
+    session.commit()
+    return a
+
+
+def test_change_detection_is_per_asset(session):
+    _add_second_asset(session)
+    import copy, json as _json
+    from fixtures.helpers import load_json
+    v1 = load_json("ctgov_studies.json")
+    v2 = copy.deepcopy(v1)
+    v2["studies"][1]["protocolSection"]["statusModule"]["overallStatus"] = "COMPLETED"
+    v2["studies"][1]["protocolSection"]["statusModule"]["lastUpdatePostDateStruct"]["date"] = "2026-10-20"
+    payload = {"v": v1}
+    http.set_transport(httpx.MockTransport(lambda r: httpx.Response(200, json=payload["v"])))
+    try:
+        run_agent(session, "registry_watch", "asp3082-pdac")
+        run_agent(session, "registry_watch", "asp3082-nsclc")
+        payload["v"] = v2  # trial update lands; PDAC runs first and overwrites the global hash
+        r_pdac = run_agent(session, "registry_watch", "asp3082-pdac")
+        r_nsclc = run_agent(session, "registry_watch", "asp3082-nsclc")
+        r_again = run_agent(session, "registry_watch", "asp3082-nsclc")
+    finally:
+        http.set_transport(None)
+    assert r_pdac.items_new == 1
+    assert r_nsclc.items_new == 1  # second asset still sees the update
+    assert r_again.items_new == 0
+    nsclc = session.execute(select(Asset).where(Asset.slug == "asp3082-nsclc")).scalar_one()
+    t = session.execute(select(Trial).where(Trial.asset_id == nsclc.id,
+                                            Trial.nct_id == "NCT99990002")).scalar_one()
+    assert t.status == "Completed"
+
+
+def test_unmatched_reevaluated_after_new_hypothesis(session):
+    import time
+    def h(req):
+        return httpx.Response(200, json={"studies": [{"protocolSection": {
+            "identificationModule": {"nctId": "NCT99990078", "briefTitle": "Nutrition support in pancreatic cancer cachexia"},
+            "statusModule": {"overallStatus": "RECRUITING"},
+            "conditionsModule": {"conditions": ["Pancreatic Cancer", "Cachexia"]},
+            "designModule": {"phases": ["NA"]}}}]})
+
+    http.set_transport(httpx.MockTransport(h))
+    try:
+        r1 = run_agent(session, "registry_watch", "asp3082-pdac")
+        assert r1.signals_created == 0
+        assert session.query(UnmatchedItem).count() == 1
+        r2 = run_agent(session, "registry_watch", "asp3082-pdac")
+        assert r2.items_new == 0  # nothing new: not re-evaluated
+        time.sleep(0.01)
+        asset = session.execute(select(Asset)).scalar_one()
+        agent = session.execute(select(Agent).where(Agent.key == "registry_watch")).scalar_one()
+        extra = {"position_line": "Population"} if hasattr(Hypothesis, "position_line") else {}
+        hyp = Hypothesis(asset_id=asset.id, code="H9", category="Population", owner_role="Clinical",
+                         confidence_start=50, confidence=50, threshold=65,
+                         statement="Cachexia and nutrition status will limit eligibility in pancreatic cancer.",
+                         keywords=["cachexia", "nutrition"], **extra)
+        session.add(hyp)
+        session.flush()
+        session.add(HypothesisAgent(hypothesis_id=hyp.id, agent_id=agent.id))
+        session.commit()
+        r3 = run_agent(session, "registry_watch", "asp3082-pdac")
+    finally:
+        http.set_transport(None)
+    assert r3.items_new == 1 and r3.signals_created == 1
+    assert session.query(UnmatchedItem).count() == 0  # stale row superseded

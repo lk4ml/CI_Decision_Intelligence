@@ -35,8 +35,7 @@ def _pos(db, pid) -> Position:
 def lock(pid: str, body: LockBody = Body(default_factory=LockBody), db: Session = Depends(get_session),
          w: Who = Depends(who)):
     p = _pos(db, pid)
-    role = body.role or w.role
-    hist = pos_svc.lock(db, p, body.actor or w.actor, role, body.scenario_id)
+    hist = pos_svc.lock(db, p, w.actor, w.role, body.scenario_id)
     db.commit()
     return {**views.position_view(db, p), "history": history_view(hist)}
 

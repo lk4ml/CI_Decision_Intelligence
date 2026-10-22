@@ -1,7 +1,7 @@
 """Pydantic request models (responses are plain dicts shaped per docs/ARCHITECTURE.md)."""
 from __future__ import annotations
 
-from typing import Any, Literal, Optional
+from typing import Annotated, Any, Literal, Optional
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -24,14 +24,13 @@ CATEGORY_TO_LINE = {"Population": "Population", "Intervention": "Intervention", 
 
 
 class ApplyBody(BaseModel):
-    overrides: Optional[dict[str, float]] = None
+    """Actor and role come only from X-Actor / X-Role headers."""
+    overrides: Optional[dict[str, Any]] = None  # validated in services.review (finite, known code, reason)
     reason: Optional[str] = None
-    actor: Optional[str] = None
 
 
 class ReasonBody(BaseModel):
     reason: Optional[str] = None
-    actor: Optional[str] = None
 
 
 class HypothesisCreate(BaseModel):
@@ -69,7 +68,7 @@ class LeversBody(BaseModel):
 class ModelRunBody(BaseModel):
     asset: str
     levers: dict[str, Any] = {}
-    hypotheses: Optional[dict[str, float]] = None  # optional what-if confidences (0–100) by code
+    hypotheses: Optional[dict[str, Annotated[float, Field(ge=0, le=100)]]] = None  # what-if confidences (0–100) by code
 
 
 class MonteCarloBody(ModelRunBody):
@@ -84,8 +83,6 @@ class ScenarioCreate(BaseModel):
 
 class LockBody(BaseModel):
     scenario_id: Optional[str] = None
-    actor: Optional[str] = None
-    role: Optional[Role] = None
 
 
 class AgentPatch(BaseModel):

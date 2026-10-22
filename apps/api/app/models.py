@@ -11,6 +11,7 @@ from typing import Any, Optional
 from sqlalchemy import (
     JSON,
     Boolean,
+    CheckConstraint,
     DateTime,
     Float,
     ForeignKey,
@@ -216,8 +217,9 @@ class Trial(_Common, Base):
 
 class Signal(_Common, Base):
     __tablename__ = "signals"
+    __table_args__ = (CheckConstraint("source_url LIKE 'http%'", name="ck_signal_source_url_http"),)
     asset_id: Mapped[str] = mapped_column(ForeignKey("assets.id"), nullable=False, index=True)
-    agent_id: Mapped[Optional[str]] = mapped_column(ForeignKey("agents.id"), nullable=True, index=True)
+    agent_id: Mapped[str] = mapped_column(ForeignKey("agents.id"), nullable=False, index=True)
     title: Mapped[str] = mapped_column(Text, nullable=False)
     so_what: Mapped[Optional[str]] = mapped_column(Text)
     source_name: Mapped[Optional[str]] = mapped_column(String(200))

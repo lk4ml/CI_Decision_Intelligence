@@ -115,8 +115,24 @@ def next_run_at() -> Optional[datetime]:
     return min(times) if times else None
 
 
+def _add_interval(key: str, slug: str, cadence: int, first_delay_s: int) -> None:
+    _scheduler.add_job(_job, "interval", minutes=cadence, args=[key, slug], id=f"{key}:{slug}",
+                       replace_existing=True, max_instances=1, coalesce=True,
+                       next_run_time=datetime.now(timezone.utc) + timedelta(seconds=first_delay_s))
+
+
+def _agent_cadence(agent_key: str) -> tuple[Optional[int], Optional[str]]:
+    s = db.SessionLocal()
+    try:
+        a = s.execute(select(Agent).where(Agent.key == agent_key)).scalar_one_or_none()
+        return (a.cadence_minutes, a.status) if a else (None, None)
+    finally:
+        s.close()
+
+
 def enqueue(agent_key: str, asset_slug: str, delay_s: int = ENQUEUE_DELAY_S) -> dict:
-    """Schedule an immediate one-off run; works with or without the scheduler running."""
+    """Immediate one-off run plus (re)registration of the recurring job ``{key}:{slug}``.
+    Works with or without the scheduler running."""
     run_at = datetime.now(timezone.utc) + timedelta(seconds=delay_s)
     if not registry.is_runnable(agent_key):
         return {"agent_key": agent_key, "asset_slug": asset_slug, "run_at": None,
@@ -124,6 +140,10 @@ def enqueue(agent_key: str, asset_slug: str, delay_s: int = ENQUEUE_DELAY_S) -> 
     if _scheduler is not None:
         _scheduler.add_job(_job, "date", run_date=run_at, args=[agent_key, asset_slug],
                            id=f"once:{agent_key}:{asset_slug}:{run_at.timestamp()}")
+        cadence, status = _agent_cadence(agent_key)
+        if cadence and status != "planned":
+            # first recurring tick one cadence after the immediate run
+            _add_interval(agent_key, asset_slug, int(cadence), delay_s + int(cadence) * 60)
     elif not disabled():
         t = threading.Timer(delay_s, _run_sync, args=[agent_key, asset_slug])
         t.daemon = True
@@ -132,6 +152,24 @@ def enqueue(agent_key: str, asset_slug: str, delay_s: int = ENQUEUE_DELAY_S) -> 
         return {"agent_key": agent_key, "asset_slug": asset_slug, "run_at": None,
                 "skipped": "scheduler disabled"}
     return {"agent_key": agent_key, "asset_slug": asset_slug, "run_at": run_at.isoformat()}
+
+
+def reschedule(agent_key: str) -> list[str]:
+    """Rebuild recurring jobs for one agent from the DB (call after PATCH /agents changes
+    cadence/status or attachments). Returns the job ids now scheduled for that agent."""
+    if _scheduler is None:
+        return []
+    for j in list(_scheduler.get_jobs()):
+        if j.id.startswith(f"{agent_key}:"):
+            j.remove()
+    s = db.SessionLocal()
+    try:
+        plan = [p for p in pairs(s) if p[0] == agent_key]
+    finally:
+        s.close()
+    for i, (key, slug, cadence) in enumerate(plan):
+        _add_interval(key, slug, cadence, FIRST_RUN_DELAY_S + i * STAGGER_S)
+    return [f"{k}:{a}" for k, a, _ in plan]
 
 
 def run_all_now() -> list[dict]:

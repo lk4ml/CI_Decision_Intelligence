@@ -13,7 +13,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Optional
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.connectors.ctgov import phase_rank
@@ -222,6 +222,46 @@ class _Plan:
     matches: list = field(default_factory=list)
     imp: Optional[Implication] = None
     rules_imp: Optional[Implication] = None
+    stale_unmatched_ids: list = field(default_factory=list)
+
+
+REEVALUATE_REASONS = ("no_hypothesis_match", "no_move_proposed")
+
+
+def _seen(fi: Optional[FetchedItem]) -> dict:
+    st = (fi.structured if fi is not None else None) or {}
+    return dict(st.get("_seen") or {}) if isinstance(st, dict) else {}
+
+
+def _mark_seen(fi: FetchedItem, asset: Asset, facts: Optional[Facts]) -> None:
+    st = dict(fi.structured) if isinstance(fi.structured, dict) else {}
+    seen = dict(st.get("_seen") or {})
+    seen[asset.slug] = fi.content_hash
+    st["_seen"] = seen
+    if facts is not None:
+        per = dict(st.get("facts") or {})
+        per[asset.slug] = facts.model_dump(exclude={"trial"})
+        st["facts"] = per
+    fi.structured = st  # reassign so the JSON column is flagged dirty
+
+
+def _stale_unmatched(session: Session, agent: Agent, asset: Asset, fi: FetchedItem) -> list[str]:
+    """Unmatched rows for (item, asset) older than the newest hypothesis / agent attachment."""
+    rows = list(session.execute(select(UnmatchedItem).where(
+        UnmatchedItem.fetched_item_id == fi.id, UnmatchedItem.asset_id == asset.id,
+        UnmatchedItem.reason.in_(REEVALUATE_REASONS))).scalars())
+    if not rows:
+        return []
+    h_new = session.execute(select(func.max(Hypothesis.created_at))
+                            .where(Hypothesis.asset_id == asset.id)).scalar()
+    l_new = session.execute(select(func.max(HypothesisAgent.created_at))
+                            .join(Hypothesis, Hypothesis.id == HypothesisAgent.hypothesis_id)
+                            .where(Hypothesis.asset_id == asset.id,
+                                   HypothesisAgent.agent_id == agent.id)).scalar()
+    newest = max([d for d in (h_new, l_new) if d is not None], default=None)
+    if newest is None:
+        return []
+    return [u.id for u in rows if u.created_at < newest]
 
 
 def _plan_reads(session: Session, agent: Agent, asset: Asset,
@@ -236,8 +276,15 @@ def _plan_reads(session: Session, agent: Agent, asset: Asset,
             FetchedItem.source_key == item.source_key,
             FetchedItem.external_id == item.external_id)).scalar_one_or_none()
         changed = fi is None or fi.content_hash != item.content_hash
-        prev_data = (fi.raw or {}).get("data") if fi is not None else None
-        p.new_for_asset = changed or not _already_processed(session, fi, asset)
+        # Per-asset change detection: the hash this asset last processed for the item.
+        seen = _seen(fi).get(asset.slug)
+        if fi is not None and seen is None and not changed and _already_processed(session, fi, asset):
+            seen = fi.content_hash  # rows written before per-asset tracking existed
+        p.new_for_asset = seen != item.content_hash
+        if not p.new_for_asset and fi is not None:
+            stale = _stale_unmatched(session, agent, asset, fi)
+            if stale:
+                p.new_for_asset, p.stale_unmatched_ids = True, stale
         trial_prev = None
         if item.source_key == "ctgov":
             p.pre = extract(asset, item, ctx, None)
@@ -250,8 +297,13 @@ def _plan_reads(session: Session, agent: Agent, asset: Asset,
                               "primary_completion": row.primary_completion}
         if p.new_for_asset:
             if item.source_key == "ctgov":
-                p.facts = extract(asset, item, ctx, trial_prev if trial_prev is not None else
-                                  (prev_data if changed and prev_data else None))
+                if trial_prev is None:  # e.g. context trials: last facts this asset saw
+                    pf = ((fi.structured or {}).get("facts") or {}).get(asset.slug) \
+                        if fi is not None and isinstance(fi.structured, dict) else None
+                    if pf:
+                        trial_prev = {"status": pf.get("status"), "phase": pf.get("phase"),
+                                      "primary_completion": pf.get("primary_completion")}
+                p.facts = extract(asset, item, ctx, trial_prev)
                 if not p.facts.on_indication:
                     p.reason = "off_indication"
             else:
@@ -289,7 +341,11 @@ def _write(session: Session, agent: Agent, asset: Asset, run: AgentRun, plans: l
         if not p.new_for_asset:
             continue
         run.items_new += 1
-        fi.structured = p.facts.model_dump(exclude={"trial"}) if p.facts else None
+        for uid in p.stale_unmatched_ids:  # superseded by this re-evaluation
+            old = session.get(UnmatchedItem, uid)
+            if old is not None:
+                session.delete(old)
+        _mark_seen(fi, asset, p.facts)
         if p.reason:
             _unmatched(session, fi, asset, p.reason)
             continue

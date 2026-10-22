@@ -2,14 +2,10 @@
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import { countOf, signed } from "@/lib/format";
+import { countOf, itemsOf, signed } from "@/lib/format";
 import { useUi } from "@/lib/store";
 import type { ChangeHypothesis, ChangePattern, ChangePosition, ChangeSignal } from "@/lib/types";
 import { ErrorState, Loading } from "../common/States";
-
-function list<T>(v: number | T[]): T[] {
-  return Array.isArray(v) ? v : [];
-}
 
 export default function WhatsChanged({ slug }: { slug: string }) {
   const role = useUi((s) => s.viewRole);
@@ -21,10 +17,10 @@ export default function WhatsChanged({ slug }: { slug: string }) {
   const nMov = countOf(c.moved_hypotheses);
   const nPat = countOf(c.fired_patterns);
   const nPos = countOf(c.reopened_positions);
-  const sigs = list<ChangeSignal>(c.pending_signals);
-  const movs = list<ChangeHypothesis>(c.moved_hypotheses);
-  const pats = list<ChangePattern>(c.fired_patterns);
-  const poss = list<ChangePosition>(c.reopened_positions);
+  const sigs = itemsOf<ChangeSignal>(c.pending_signals);
+  const movs = itemsOf<ChangeHypothesis>(c.moved_hypotheses);
+  const pats = itemsOf<ChangePattern>(c.fired_patterns);
+  const poss = itemsOf<ChangePosition>(c.reopened_positions);
   const rows = [
     {
       t: "Signals waiting for your review",

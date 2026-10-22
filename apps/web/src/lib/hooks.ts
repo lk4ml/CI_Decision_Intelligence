@@ -13,15 +13,19 @@ export function useLiveEvents(asset?: string, onEvent?: (e: ActivityEvent) => vo
   useEffect(() => {
     if (typeof window === "undefined" || typeof EventSource === "undefined") return;
     const es = new EventSource(api.streamUrl(asset));
+    // Connecting (or reconnecting) does not invalidate anything; only real events do.
     es.onopen = () => setConnected(true);
     es.onerror = () => setConnected(false);
     const handle = (type: string) => (msg: MessageEvent) => {
-      let data: Record<string, unknown> = {};
+      if (!msg.data) return; // keep-alive / connect frames carry no payload
+      let data: Record<string, unknown>;
       try {
         data = JSON.parse(msg.data);
       } catch {
-        /* ignore */
+        return; // not an event payload (e.g. "connected" banner)
       }
+      if (!data || typeof data !== "object") return;
+      if (type === "message" && (data.type === "connected" || data.type === "hello" || data.type === "ping")) return;
       const ev: ActivityEvent = { type, ...(data as ActivityEvent) };
       if (!ev.type) ev.type = type;
       cb.current?.(ev);
@@ -31,9 +35,7 @@ export function useLiveEvents(asset?: string, onEvent?: (e: ActivityEvent) => vo
     const types = [
       "message",
       "signal.created",
-      "signal.applied",
-      "signal.dismissed",
-      "signal.undone",
+      "signal.reviewed",
       "hypothesis.updated",
       "hypothesis.created",
       "hypothesis.crossed",
@@ -42,9 +44,7 @@ export function useLiveEvents(asset?: string, onEvent?: (e: ActivityEvent) => vo
       "pattern.fired",
       "pattern.cleared",
       "levers.updated",
-      "agent.run.started",
-      "agent.run.finished",
-      "agent_run",
+      "agent.run",
       "agent.updated",
       "trial.updated",
       "brief.exported",

@@ -132,10 +132,10 @@ export const api = {
 
   signals: (slug: string, status?: string) => getCovered<Signal>(`/assets/${slug}/signals${q({ status })}`),
   applySignal: (id: string, overrides?: Record<string, number>, reason?: string) =>
-    post<unknown>(`/signals/${id}/apply`, { actor: identity.actor, overrides, reason }),
-  dismissSignal: (id: string) => post<unknown>(`/signals/${id}/dismiss`, { actor: identity.actor }),
-  undoSignal: (id: string) => post<unknown>(`/signals/${id}/undo`, { actor: identity.actor }),
-  applyAll: (slug: string) => post<unknown>(`/assets/${slug}/signals/apply-all`, { actor: identity.actor }),
+    post<unknown>(`/signals/${id}/apply`, { overrides, reason }),
+  dismissSignal: (id: string) => post<unknown>(`/signals/${id}/dismiss`, {}),
+  undoSignal: (id: string) => post<unknown>(`/signals/${id}/undo`, {}),
+  applyAll: (slug: string) => post<unknown>(`/assets/${slug}/signals/apply-all`, {}),
 
   proposals: (slug: string) => get<Proposal[]>(`/assets/${slug}/proposals`),
   patterns: (slug: string) => get<Pattern[]>(`/assets/${slug}/patterns`),
@@ -154,7 +154,7 @@ export const api = {
   lockPosition: (id: string, scenario_id?: string) =>
     post<Position>(`/positions/${id}/lock`, scenario_id ? { scenario_id } : {}),
   positionHistory: (id: string) => get<PositionHistoryEntry[]>(`/positions/${id}/history`),
-  exportBrief: (slug: string) => post<BriefExport>(`/assets/${slug}/briefs`, { exported_by: identity.actor }),
+  exportBrief: (slug: string) => post<BriefExport>(`/assets/${slug}/briefs`, {}),
   briefHtmlUrl: (id: string) => `${API_BASE}/briefs/${id}.html`,
 
   agents: () => get<Agent[]>("/agents"),

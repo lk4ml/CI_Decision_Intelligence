@@ -15,7 +15,7 @@ from sqlalchemy.exc import IntegrityError
 os.environ["DI_DISABLE_SCHEDULER"] = "1"
 
 from app import db  # noqa: E402
-from app.models import (Asset, AuditEvent, FetchedItem, Hypothesis, Pattern, Position, ProposedDecision,  # noqa: E402
+from app.models import (Agent, Asset, AuditEvent, FetchedItem, Hypothesis, Pattern, Position, ProposedDecision,  # noqa: E402
                         Signal, SignalMove, Trial)
 
 ASSETS = ["asp3082-pdac", "asp3082-nsclc", "asp2138-gc"]
@@ -54,7 +54,8 @@ def make_signal(s, slug, moves: dict[str, int], impact="normal") -> str:
                      retrieved_at=now)
     s.add(fi)
     s.flush()
-    sig = Signal(asset_id=a.id, title=f"Synthetic test signal {_n[0]}", so_what="test", source_name="test fixture",
+    ag = s.execute(select(Agent).where(Agent.key == "registry_watch")).scalar_one()
+    sig = Signal(asset_id=a.id, agent_id=ag.id, title=f"Synthetic test signal {_n[0]}", so_what="test", source_name="test fixture",
                  source_url=url, retrieved_at=now, impact=impact, fetched_item_id=fi.id)
     s.add(sig)
     s.flush()
@@ -214,22 +215,77 @@ def test_lock_then_crossing_reopens_and_keeps_history(client, session):
 # ---------------------------------------------------------------- guardrail invariants
 def test_signal_without_source_url_cannot_be_inserted(client, session):
     a = session.execute(select(Asset)).scalars().first()
+    ag = session.execute(select(Agent)).scalars().first()
     fi = FetchedItem(source_key="ctgov", external_id="X-1", url="https://example.test/x", retrieved_at=datetime.now())
     session.add(fi)
+    session.commit()
+    good = dict(asset_id=a.id, agent_id=ag.id, title="t", source_url="https://example.test/x",
+                retrieved_at=datetime.now(), fetched_item_id=fi.id)
+    for bad in ({"source_url": None}, {"source_url": "ftp://x"}, {"source_url": "not a url"},
+                {"retrieved_at": None}, {"fetched_item_id": None}, {"agent_id": None}):
+        session.add(Signal(**{**good, **bad}))
+        with pytest.raises(IntegrityError):
+            session.flush()
+        session.rollback()
+    session.add(Signal(**good))
     session.flush()
-    session.add(Signal(asset_id=a.id, title="no url", source_url=None, retrieved_at=datetime.now(), fetched_item_id=fi.id))
-    with pytest.raises(IntegrityError):
-        session.flush()
     session.rollback()
-    session.add(Signal(asset_id=a.id, title="no retrieval", source_url="https://example.test/x", retrieved_at=None,
-                       fetched_item_id=fi.id))
-    with pytest.raises(IntegrityError):
-        session.flush()
-    session.rollback()
-    session.add(Signal(asset_id=a.id, title="no item", source_url="https://example.test/x", retrieved_at=datetime.now()))
-    with pytest.raises(IntegrityError):
-        session.flush()
-    session.rollback()
+
+
+def test_identity_only_from_headers(client):
+    p = pos(client, "asp3082-nsclc", "Population")
+    r = client.post(f"{API}/positions/{p['id']}/lock", json={"role": "Admin", "actor": "spoof"}, headers=H_CLIN)
+    assert r.status_code == 403
+    r = client.post(f"{API}/positions/{p['id']}/lock", json={"role": "Admin"})
+    assert r.status_code == 403
+    r = client.post(f"{API}/positions/{p['id']}/lock", json={"actor": "spoof"}, headers=H_ADMIN)
+    assert r.status_code == 200
+    assert client.get(f"{API}/positions/{p['id']}/history").json()[0]["locked_by"] == "user:Admin"
+
+
+def test_model_hypothesis_overrides_bounded(client):
+    for v in (-1, 101):
+        r = client.post(f"{API}/models/run", json={"asset": "asp2138-gc", "levers": {}, "hypotheses": {"H1": v}})
+        assert r.status_code == 422
+    assert client.post(f"{API}/models/run", json={"asset": "asp2138-gc", "hypotheses": {"H1": 90}}).status_code == 200
+
+
+def test_sse_generator_survives_idle_timeouts():
+    import asyncio
+
+    from app.routers.events import event_generator
+    from app.services import events as bus
+
+    class Req:
+        async def is_disconnected(self):
+            return False
+
+    async def go():
+        gen = event_generator(Req(), "asp2138-gc", ping_s=0.02)
+        first = await gen.__anext__()
+        assert first.comment == "connected"
+        pings = 0
+        for _ in range(4):  # several idle timeouts in a row
+            ev = await gen.__anext__()
+            if getattr(ev, "comment", None) == "ping":
+                pings += 1
+        assert pings >= 3
+        bus.publish("levers.updated", {"entity": "asset", "id": "a"}, "asp2138-gc")
+        for _ in range(10):
+            ev = await gen.__anext__()
+            if isinstance(ev, dict):
+                break
+        assert ev["event"] == "levers.updated"
+        bus.publish("audit", {"entity": "x", "id": "b"}, "asp2138-gc")
+        for _ in range(10):
+            ev = await gen.__anext__()
+            if isinstance(ev, dict):
+                break
+        assert ev["event"] == "audit"
+        await gen.aclose()
+        assert bus.subscriber_count() == 0
+
+    asyncio.run(go())
 
 
 # ---------------------------------------------------------------- sim

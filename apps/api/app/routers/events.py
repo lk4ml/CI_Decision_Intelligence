@@ -7,6 +7,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, Request
 from sqlalchemy import select
 from sqlalchemy.orm import Session
+from sse_starlette.event import ServerSentEvent
 from sse_starlette.sse import EventSourceResponse
 
 from app.models import Agent, AgentRun, Asset, AuditEvent
@@ -46,22 +47,35 @@ def recent(asset: Optional[str] = None, limit: int = 50, db: Session = Depends(g
     return items[:limit]
 
 
+async def event_generator(request: Request, asset: Optional[str], ping_s: float = 15):
+    """One pending __anext__ task at a time; timeouts yield a comment ping and keep the same task
+    (cancelling it would close the subscribe generator)."""
+    yield ServerSentEvent(comment="connected")
+    agen = bus.subscribe(asset)
+    nxt: Optional[asyncio.Future] = None
+    try:
+        while True:
+            if await request.is_disconnected():
+                break
+            if nxt is None:
+                nxt = asyncio.ensure_future(agen.__anext__())
+            done, _ = await asyncio.wait({nxt}, timeout=ping_s)
+            if not done:
+                yield ServerSentEvent(comment="ping")
+                continue
+            ev = nxt.result()
+            nxt = None
+            yield {"event": ev["type"], "data": json.dumps({**ev["data"], "at": ev["at"]}, default=str)}
+    finally:
+        if nxt is not None and not nxt.done():
+            nxt.cancel()
+            try:
+                await nxt
+            except (asyncio.CancelledError, StopAsyncIteration, Exception):
+                pass
+        await agen.aclose()
+
+
 @router.get("/events/stream")
 async def stream(request: Request, asset: Optional[str] = None):
-    async def gen():
-        yield {"event": "audit", "data": json.dumps({"asset_slug": asset, "entity": "stream", "id": None,
-                                                     "message": "connected"})}
-        agen = bus.subscribe(asset)
-        try:
-            while True:
-                if await request.is_disconnected():
-                    break
-                try:
-                    ev = await asyncio.wait_for(agen.__anext__(), timeout=15)
-                except asyncio.TimeoutError:
-                    continue
-                yield {"event": ev["type"], "data": json.dumps({**ev["data"], "at": ev["at"]}, default=str)}
-        finally:
-            await agen.aclose()
-
-    return EventSourceResponse(gen(), ping=15)
+    return EventSourceResponse(event_generator(request, asset), ping=15)

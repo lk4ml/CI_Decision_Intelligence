@@ -40,19 +40,27 @@ export function signed(n: number) {
 export function fmtNum(v: number | string | null | undefined, unit?: string | null) {
   if (v === null || v === undefined || v === "") return "—";
   if (typeof v === "string") return unit ? `${v} ${unit}` : v;
-  const u = unit || "";
+  let u = unit || "";
+  const ul = u.toLowerCase();
+  if (ul === "probability" || ul === "fraction" || ul === "share") u = "%";
+  else if (ul === "usd b" || ul === "usd bn") u = "$B";
+  else if (ul === "usd m") u = "$M";
+  else if (ul === "usd/month" || ul === "usd / month" || ul === "$/month" || ul === "$/mo") u = "$/mo";
+  else if (ul === "usd") u = "$";
   const abs = Math.abs(v);
   let s: string;
   if (u === "%" ) s = `${Math.round(v * (abs <= 1 ? 100 : 1))}`;
   else if (abs >= 1_000_000) s = `${(v / 1_000_000).toFixed(1)}M`;
   else if (abs >= 10_000) s = `${Math.round(v / 1000)}k`;
+  else if (u === "$/mo" || u === "$") s = Math.round(v).toLocaleString("en-US");
   else if (Number.isInteger(v)) s = v.toLocaleString("en-US");
   else s = v.toFixed(abs < 10 ? 2 : 1);
   if (!u) return s;
   if (u === "%") return `${s}%`;
-  if (u === "$" || u === "USD") return `$${s}`;
-  if (u === "$B" || u === "USD bn" || u === "$bn") return `$${s}B`;
-  if (u === "$M" || u === "USD m" || u === "$m") return `$${s}M`;
+  if (u === "$") return `$${s}`;
+  if (u === "$/mo") return `$${s}/mo`;
+  if (u === "$B" || u === "$bn") return `$${s}B`;
+  if (u === "$M" || u === "$m") return `$${s}M`;
   return `${s} ${u}`;
 }
 
@@ -68,9 +76,19 @@ export function phaseSourceLabel(src?: string | null) {
   return src === "registry" ? "registry-verified" : "user-provided, not registry-verified";
 }
 
-export function countOf<T>(v: number | T[] | null | undefined) {
+type Bucket<T> = number | T[] | { count?: number; items?: T[] } | null | undefined;
+
+export function countOf<T>(v: Bucket<T>): number {
   if (v === null || v === undefined) return 0;
-  return typeof v === "number" ? v : v.length;
+  if (typeof v === "number") return v;
+  if (Array.isArray(v)) return v.length;
+  return v.count ?? v.items?.length ?? 0;
+}
+
+export function itemsOf<T>(v: Bucket<T>): T[] {
+  if (!v || typeof v === "number") return [];
+  if (Array.isArray(v)) return v;
+  return v.items ?? [];
 }
 
 export function yearFrac(iso?: string | null): number | null {
