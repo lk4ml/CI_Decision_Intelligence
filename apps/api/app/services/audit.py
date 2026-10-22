@@ -1,38 +1,65 @@
-"""Append-only, hash-chained audit log.
+"""Append-only, hash-chained audit log (Addendum A #11).
 
-`record(session, actor, action, entity, entity_id, payload, before=None, after=None)`
-adds an AuditEvent to the session (caller commits). hash = sha256(prev_hash + canonical body).
+`record(session, actor, action, entity, entity_id, payload, before=None, after=None, asset_id=None)`
+adds an AuditEvent to the session (caller commits).
+hash = sha256(canonical JSON (sorted keys) of the event body + prev_hash). Writes are serialised by a
+process-wide lock so the chain cannot fork within one process.
 """
 from __future__ import annotations
 
 import hashlib
 import json
+import threading
 from typing import Any, Optional
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.models import AuditEvent, utcnow
 
 GENESIS = "0" * 64
+_LOCK = threading.RLock()
 
 
-def _canon(obj: Any) -> str:
+def canonical(obj: Any) -> str:
     return json.dumps(obj, sort_keys=True, default=str, separators=(",", ":"))
 
 
 def digest(obj: Any) -> Optional[str]:
     if obj is None:
         return None
-    return hashlib.sha256(_canon(obj).encode()).hexdigest()
+    return hashlib.sha256(canonical(obj).encode()).hexdigest()
+
+
+def _body(ev: AuditEvent) -> dict:
+    return {
+        "seq": ev.seq,
+        "ts": ev.ts.isoformat(),
+        "actor": ev.actor,
+        "action": ev.action,
+        "entity": ev.entity,
+        "entity_id": ev.entity_id,
+        "asset_id": ev.asset_id,
+        "before_hash": ev.before_hash,
+        "after_hash": ev.after_hash,
+        "payload": json.loads(canonical(ev.payload)) if ev.payload is not None else None,
+    }
+
+
+def compute_hash(ev: AuditEvent, prev_hash: str) -> str:
+    return hashlib.sha256((canonical(_body(ev)) + prev_hash).encode()).hexdigest()
 
 
 def _last(session: Session) -> Optional[AuditEvent]:
-    # include pending (unflushed) rows in this session
     pending = [o for o in session.new if isinstance(o, AuditEvent)]
     if pending:
         return max(pending, key=lambda e: e.seq)
     return session.execute(select(AuditEvent).order_by(AuditEvent.seq.desc()).limit(1)).scalar_one_or_none()
+
+
+def head_hash(session: Session) -> str:
+    last = _last(session)
+    return last.hash if last else GENESIS
 
 
 def record(
@@ -46,58 +73,45 @@ def record(
     after: Any = None,
     asset_id: Optional[str] = None,
 ) -> AuditEvent:
-    last = _last(session)
-    prev_hash = last.hash if last else GENESIS
-    seq = (last.seq + 1) if last else 1
-    created = utcnow()
-    before_hash, after_hash = digest(before), digest(after)
-    body = {
-        "seq": seq,
-        "actor": actor,
-        "action": action,
-        "entity": entity,
-        "entity_id": entity_id,
-        "before_hash": before_hash,
-        "after_hash": after_hash,
-        "payload": payload,
-        "created_at": created.isoformat(),
-    }
-    h = hashlib.sha256((prev_hash + _canon(body)).encode()).hexdigest()
-    ev = AuditEvent(
-        seq=seq,
-        actor=actor or "system",
-        action=action,
-        entity=entity,
-        entity_id=entity_id,
-        asset_id=asset_id,
-        before_hash=before_hash,
-        after_hash=after_hash,
-        payload=payload,
-        prev_hash=prev_hash,
-        hash=h,
-        created_at=created,
-    )
-    session.add(ev)
-    return ev
+    with _LOCK:
+        last = _last(session)
+        prev_hash = last.hash if last else GENESIS
+        seq = (last.seq + 1) if last else 1
+        now = utcnow()
+        ev = AuditEvent(
+            seq=seq,
+            ts=now,
+            created_at=now,
+            actor=actor or "system",
+            action=action,
+            entity=entity,
+            entity_id=entity_id,
+            asset_id=asset_id,
+            before_hash=digest(before),
+            after_hash=digest(after),
+            payload=json.loads(canonical(payload)) if payload is not None else None,
+            prev_hash=prev_hash,
+            hash="",
+        )
+        ev.hash = compute_hash(ev, prev_hash)
+        session.add(ev)
+        session.flush()
+        return ev
+
+
+def verify(session: Session) -> dict:
+    prev = GENESIS
+    n = 0
+    ok = True
+    for ev in session.execute(select(AuditEvent).order_by(AuditEvent.seq)).scalars():
+        n += 1
+        if ev.prev_hash != prev or compute_hash(ev, prev) != ev.hash:
+            ok = False
+            break
+        prev = ev.hash
+    length = session.execute(select(func.count(AuditEvent.id))).scalar_one()
+    return {"ok": ok, "length": length, "head_hash": head_hash(session)}
 
 
 def verify_chain(session: Session) -> bool:
-    prev = GENESIS
-    for ev in session.execute(select(AuditEvent).order_by(AuditEvent.seq)).scalars():
-        body = {
-            "seq": ev.seq,
-            "actor": ev.actor,
-            "action": ev.action,
-            "entity": ev.entity,
-            "entity_id": ev.entity_id,
-            "before_hash": ev.before_hash,
-            "after_hash": ev.after_hash,
-            "payload": ev.payload,
-            "created_at": ev.created_at.isoformat(),
-        }
-        if ev.prev_hash != prev:
-            return False
-        if hashlib.sha256((prev + _canon(body)).encode()).hexdigest() != ev.hash:
-            return False
-        prev = ev.hash
-    return True
+    return verify(session)["ok"]

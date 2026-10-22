@@ -291,3 +291,35 @@ def test_core_seed_registry_watch_if_available(mocked, monkeypatch):
         assert s.query(Signal).filter(Signal.source_url.like("https://clinicaltrials.gov/study/%")).count() >= 1
     finally:
         s.close()
+
+
+def test_multi_source_partial_outage(session):
+    """literature: PubMed blocked (403) but Europe PMC answers -> run ok, PubMed marked down."""
+    routes = {k: v for k, v in all_source_routes().items() if not k.startswith("eutils.")}
+    http.set_transport(route_transport(routes, default_status=403))
+    try:
+        run = run_agent(session, "literature", "asp3082-pdac")
+    finally:
+        http.set_transport(None)
+    assert run.status == "ok"
+    assert run.items_fetched == 2  # Europe PMC fixture items only
+    assert "pubmed" in run.error and "403" in run.error
+    assert "Unreachable: pubmed" in run.summary and "Europe PMC" not in run.summary.split("Unreachable")[1]
+    src = {s.key: s for s in session.execute(select(Source)).scalars()}
+    assert src["pubmed"].last_status == "source_unreachable" and "403" in src["pubmed"].last_error
+    assert src["europepmc"].last_status == "ok" and src["europepmc"].last_error is None
+    fis = list(session.execute(select(FetchedItem)).scalars())
+    assert fis and all(f.source_key == "europepmc" for f in fis)
+
+
+def test_multi_source_all_down(session):
+    http.set_transport(route_transport({}, default_status=403))
+    try:
+        run = run_agent(session, "literature", "asp3082-pdac")
+    finally:
+        http.set_transport(None)
+    assert run.status == "source_unreachable"
+    src = {s.key: s for s in session.execute(select(Source)).scalars()}
+    assert src["pubmed"].last_status == "source_unreachable"
+    assert src["europepmc"].last_status == "source_unreachable"
+    assert session.query(FetchedItem).count() == 0

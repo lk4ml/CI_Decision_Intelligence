@@ -12,7 +12,7 @@ from __future__ import annotations
 from typing import Any, Awaitable, Callable
 
 from app.connectors import astellas_ir, ctgov, europepmc, openalex, openfda, pubmed
-from app.connectors.http import RawItem, make_client
+from app.connectors.http import RawItem, SourceUnavailable, make_client
 
 Fetched = list[tuple[RawItem, dict[str, Any]]]
 
@@ -104,15 +104,23 @@ async def _registry_watch(asset: Any) -> Fetched:
     return out
 
 
-async def _literature(asset: Any) -> Fetched:
+async def _literature(asset: Any, failed: dict[str, SourceUnavailable]) -> Fetched:
+    """PubMed and Europe PMC run independently: an outage of one does not stop the other.
+    Failures are collected in ``failed``; only if every source fails is the error raised."""
     out: Fetched = []
     q = terms(asset, "literature") or terms(asset, "own")
+    calls = (("pubmed", pubmed.search), ("europepmc", europepmc.search))
     async with make_client() as c:
-        for t in q:
-            for it in await pubmed.search(t, client=c):
-                out.append((it, {"query": t}))
-            for it in await europepmc.search(t, client=c):
-                out.append((it, {"query": t}))
+        for key, fn in calls:
+            for t in q:
+                try:
+                    for it in await fn(t, client=c):
+                        out.append((it, {"query": t}))
+                except SourceUnavailable as e:
+                    failed[key] = e
+                    break  # source is down; skip its remaining queries
+    if len(failed) == len(calls):
+        raise failed["pubmed"]
     return _dedupe(out)
 
 
@@ -167,7 +175,16 @@ def is_runnable(agent_key: str) -> bool:
     return agent_key in FETCHERS
 
 
-async def fetch_for(agent_key: str, asset: Any) -> Fetched:
+MULTI_SOURCE = {"literature"}
+
+
+async def fetch_for(agent_key: str, asset: Any) -> tuple[Fetched, dict[str, SourceUnavailable]]:
+    """Return (rows, failed_sources). Raises SourceUnavailable only if every source failed."""
     if agent_key not in FETCHERS:
         raise KeyError(f"agent {agent_key!r} has no connector fetcher")
-    return await FETCHERS[agent_key](asset)
+    failed: dict[str, SourceUnavailable] = {}
+    if agent_key in MULTI_SOURCE:
+        rows = await FETCHERS[agent_key](asset, failed)
+    else:
+        rows = await FETCHERS[agent_key](asset)
+    return rows, failed

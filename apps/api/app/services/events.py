@@ -24,9 +24,10 @@ def _matches(sub_asset: Optional[str], ev_asset: Optional[str]) -> bool:
 
 
 def publish(type: str, data: dict | None = None, asset_slug: Optional[str] = None) -> dict:
+    payload = {"asset_slug": asset_slug, **(data or {})}
     ev = {
         "type": type,
-        "data": data or {},
+        "data": payload,
         "asset": asset_slug,
         "at": datetime.now(timezone.utc).isoformat(),
     }
@@ -67,3 +68,26 @@ def recent(asset_slug: Optional[str] = None, limit: int = 50) -> list[dict]:
 def subscriber_count() -> int:
     with _lock:
         return len(_subs)
+
+
+def publish_on_commit(session, type: str, data: dict | None = None, asset_slug: Optional[str] = None) -> None:
+    """Queue an event to be published after `session` commits (dropped on rollback)."""
+    session.info.setdefault("_pending_events", []).append((type, data, asset_slug))
+
+
+def _install_hooks() -> None:
+    from sqlalchemy import event as sa_event
+    from sqlalchemy.orm import Session
+
+    @sa_event.listens_for(Session, "after_commit")
+    def _after_commit(sess):  # pragma: no cover - trivial
+        pending = sess.info.pop("_pending_events", [])
+        for t, d, a in pending:
+            publish(t, d, a)
+
+    @sa_event.listens_for(Session, "after_rollback")
+    def _after_rollback(sess):  # pragma: no cover - trivial
+        sess.info.pop("_pending_events", None)
+
+
+_install_hooks()

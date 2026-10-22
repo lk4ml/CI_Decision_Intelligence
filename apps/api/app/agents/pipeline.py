@@ -188,15 +188,24 @@ def _unmatched(session: Session, fi: FetchedItem, asset: Asset, reason: str) -> 
     session.add(UnmatchedItem(fetched_item_id=fi.id, asset_id=asset.id, reason=reason))
 
 
-def _summary(agent: Agent, asset: Optional[Asset], run: AgentRun, src_names: str) -> str:
+def _summary(agent: Agent, asset: Optional[Asset], run: AgentRun, src_names: str,
+             failed: Optional[dict] = None) -> str:
     who = asset.code if asset else "all assets"
     if run.status == "source_unreachable":
         detail = (run.error or "").split("): ", 1)[-1]
         return f"{src_names} unreachable for {who} - {detail}. No data substituted."
     if run.status == "error":
         return f"Run failed for {who}: {run.error}"
-    return (f"Checked {run.items_fetched} {src_names} records for {who}: {run.items_new} new/changed, "
+    failed = failed or {}
+    ok_names = " / ".join(registry.SOURCE_NAMES.get(k, k)
+                          for k in registry.AGENT_SOURCES.get(agent.key, []) if k not in failed) or src_names
+    text = (f"Checked {run.items_fetched} {ok_names} records for {who}: {run.items_new} new/changed, "
             f"{run.signals_created} signals proposed, {run.blocked} blocked by guardrail")
+    if failed:
+        text += ". Unreachable: " + "; ".join(
+            f"{registry.SOURCE_NAMES.get(k, k)} ({e.detail})" for k, e in failed.items()
+        ) + " - no data substituted"
+    return text
 
 
 async def _process(session: Session, agent: Agent, asset: Asset, run: AgentRun,
@@ -300,12 +309,17 @@ async def _run_one(session: Session, agent: Agent, asset: Asset) -> AgentRun:
     src_keys = registry.AGENT_SOURCES.get(agent.key, list(agent.source_keys or []))
     src_names = " / ".join(registry.SOURCE_NAMES.get(k, k) for k in src_keys) or agent.name
     signal_ids: list[str] = []
+    failed: dict[str, SourceUnavailable] = {}
     try:
-        rows = await registry.fetch_for(agent.key, asset)
+        rows, failed = await registry.fetch_for(agent.key, asset)
         run.items_fetched = len(rows)
         signal_ids = await _process(session, agent, asset, run, rows)
-        run.status = "ok"
-        _update_sources(session, src_keys, "ok", None)
+        run.status = "ok"  # at least one source answered
+        _update_sources(session, [k for k in src_keys if k not in failed], "ok", None)
+        for k, e in failed.items():
+            _update_sources(session, [k], "source_unreachable", str(e))
+        if failed:
+            run.error = "; ".join(str(e) for e in failed.values())
     except SourceUnavailable as e:
         session.rollback()  # discard any partial writes; record the outage honestly
         session.add(run)
@@ -324,7 +338,7 @@ async def _run_one(session: Session, agent: Agent, asset: Asset) -> AgentRun:
         run.error = f"{type(e).__name__}: {e}"
         run.items_fetched = run.items_new = run.signals_created = run.blocked = 0
     run.finished_at = utcnow()
-    run.summary = _summary(agent, asset, run, src_names)
+    run.summary = _summary(agent, asset, run, src_names, failed)
     agent.last_run_at = run.finished_at
     session.add(agent)
     audit.record(session, ACTOR_PREFIX + agent.key, "agent.run", "agent_run", run.id,
