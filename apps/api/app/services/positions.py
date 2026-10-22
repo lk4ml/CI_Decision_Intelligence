@@ -37,7 +37,7 @@ def template_vars(session: Session, asset: Asset, levers: Optional[dict] = None)
         "comp_label": lever_label(asset, "comp", L.get("comp")),
         "cutoff_label": lever_label(asset, "cutoff", L.get("cutoff")) if "cutoff" in L else "",
         "ep_upper": str(L.get("ep", "")).upper(),
-        "geo_label": lever_label(asset, "geo", L.get("geo")).lower() if L.get("geo") != "west" else "US + EU heavy",
+        "geo_label": lever_label(asset, "geo", L.get("geo")),
         "dose_text": "a randomized two-dose cohort" if L.get("dose") else "a single Phase 2 dose",
         "combo_text": " and an anti-PD-1 backbone" if L.get("combo") else "",
         "patients": f"{round(r['demand']['on_drug']):,}",
